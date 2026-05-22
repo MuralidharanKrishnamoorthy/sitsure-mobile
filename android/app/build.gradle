@@ -77,10 +77,16 @@ android {
     namespace "com.sitsuremobile"
     defaultConfig {
         applicationId "com.sitsuremobile"
+        manifestPlaceholders = [appAuthRedirectScheme: "com.venzo.sitsure"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
     }
     signingConfigs {
         debug {

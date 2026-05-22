@@ -72,3 +72,11 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# package-lock (generated)
+package-lock.json
