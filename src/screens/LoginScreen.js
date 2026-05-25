@@ -1,8 +1,9 @@
 import React, { useContext, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity,
   Alert, StatusBar,
 } from 'react-native';
+import Loader from '../components/Loader';
 import { UserContext } from '../context/UserContext';
 import {
   signInWithMicrosoft,
@@ -58,7 +59,7 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.logoBox}>
           <Text style={styles.logoText}>SitSure</Text>
-          <Text style={styles.subtitle}>Venzo Technologies Seat Booking</Text>
+          {/* <Text style={styles.subtitle}>Venzo Technologies Seat Booking</Text> */}
         </View>
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -66,12 +67,12 @@ export default function LoginScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <Loader color="#fff" size={36} />
           ) : (
             <Text style={styles.buttonText}>Sign in with Microsoft</Text>
           )}
         </TouchableOpacity>
-        <Text style={styles.hint}>Only @venzotechnologies.com accounts</Text>
+        {/* <Text style={styles.hint}>Only @venzotechnologies.com accounts</Text> */}
       </View>
     </View>
   );
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(254,116,42,0.7)',
   },
   content: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32,
+    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, paddingBottom: 48,
   },
   logoBox: { alignItems: 'center', marginBottom: 48 },
   logoText: { fontSize: 42, fontWeight: '800', color: '#fff', letterSpacing: 2 },
@@ -102,6 +103,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: COLORS.primary, fontWeight: '700', fontSize: 16 ,},
   hint: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 16 },
 });

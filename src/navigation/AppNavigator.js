@@ -280,7 +280,7 @@ export default function AppNavigator() {
     return (
       <View style={styles.splash}>
         <Text style={styles.splashText}>SitSure</Text>
-        <Loader color="#fff" size={10} style={{ marginTop: 24 }} />
+        <Loader color="#fff" size={60} style={{ marginTop: 24 }} />
       </View>
     );
   }

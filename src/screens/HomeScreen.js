@@ -10,7 +10,7 @@ import {
   getSeatBookings, getUserBookingForDate, bookSeat,
   cancelSeatBooking, getAnchorDayForDate, getBookingCountForDate,
 } from '../services/bookingService';
-import { getTodayInKolkata, formatDate, isUpcomingOrToday } from '../utils/dateUtils';
+import { getTodayInKolkata, formatDate, isUpcomingOrToday, isThursdayOrFriday } from '../utils/dateUtils';
 import { computeRestrictions, canUserBook, isFirstFloor, isSecondFloor, isThirdFloor } from '../utils/bookingRestrictions';
 import FloorSeatLayout from '../components/seat/FloorSeatLayout';
 import FirstFloorSeatLayout from '../components/seat/FirstFloorSeatLayout';
@@ -52,10 +52,10 @@ export default function HomeScreen() {
 
   const userCanBook = canUserBook(employee?.email, restrictions);
 
-  // Hide floor 1 tab for all users when not an All Surecomp anchor day
-  const visibleFloors = !restrictions.isAllSurecomp
-    ? floors.filter((f) => !isFirstFloor(f))
-    : floors;
+  // Hide floor 1 tab when not permitted (AllSurecomp day or Thu/Fri override)
+  const visibleFloors = restrictions.showFirstFloor
+    ? floors
+    : floors.filter((f) => !isFirstFloor(f));
   const displayedFloors = restrictions.restrictToSecondFloor
     ? visibleFloors.filter((f) => !isFirstFloor(f)).length > 0
       ? visibleFloors.filter((f) => !isFirstFloor(f))
@@ -74,45 +74,67 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const loadSeatsAndBooking = useCallback(async () => {
+  const loadSeatsAndBooking = useCallback(async (signal) => {
     if (!selectedFloorId) return;
     setLoading(true);
     try {
-      const [seatData, myBooking, anchor] = await Promise.all([
+      const [seatData, myBooking] = await Promise.all([
         getSeatBookings(date, selectedFloorId),
         getUserBookingForDate(employee?.email, date),
-        getAnchorDayForDate(date),
       ]);
+      if (signal?.cancelled) {
+        return;
+      }
       setSeats(seatData);
       setMyBookedSeat(myBooking);
-      setAnchorDay(anchor);
-
-      // If anchor is not All Surecomp and selected floor is floor 1, switch to first non-floor-1 floor
-      const anchorGroups = anchor
-        ? (Array.isArray(anchor.groups) ? anchor.groups : (anchor.groups || '').split(/[,;]+/).map(g => g.trim()))
-            .map(g => g.toUpperCase())
-        : [];
-      const isAllSurecomp = anchorGroups.includes('SDOS') && anchorGroups.includes('SDL') && anchorGroups.includes('QA');
-      if (!isAllSurecomp) {
-        const activeFloor = floors.find(f => f.id === selectedFloorId);
-        if (activeFloor && isFirstFloor(activeFloor)) {
-          const fallback = floors.find(f => !isFirstFloor(f));
-          if (fallback) setSelectedFloorId(fallback.id);
-        }
-      }
       if (isAdmin) {
         const count = await getBookingCountForDate(date);
         setBookingCount(count);
       }
     } catch (err) {
+      if (signal?.cancelled) return;
       Alert.alert('Error', 'Failed to load seat data');
     } finally {
-      setLoading(false);
+      if (!signal?.cancelled) setLoading(false);
     }
   }, [selectedFloorId, date, employee?.email, isAdmin]);
 
+  // Fetch anchor day on date change only — decoupled from seat fetch to avoid cascade
+  useEffect(() => {
+    let active = true;
+    getAnchorDayForDate(date).then(anchor => {
+      if (active) {
+        setAnchorDay(anchor);
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [date]);
+
+  // Auto-select correct floor after anchor resolves — fires on date/anchorDay/floors, NOT on tab switch
+  useEffect(() => {
+    if (!floors.length) return;
+    const anchorGroups = anchorDay
+      ? (Array.isArray(anchorDay.groups) ? anchorDay.groups : (anchorDay.groups || '').split(/[,;]+/).map(g => g.trim()))
+          .map(g => g.toUpperCase())
+      : [];
+    const isAllSurecomp = anchorGroups.includes('SDOS') && anchorGroups.includes('SDL') && anchorGroups.includes('QA');
+    const isThuFri = isThursdayOrFriday(date);
+    const floor1Allowed = isAllSurecomp || isThuFri;
+    if (floor1Allowed) {
+      const floor1 = floors.find(f => isFirstFloor(f));
+      if (floor1 && floor1.id !== selectedFloorId) setSelectedFloorId(floor1.id);
+    } else {
+      const fallback = floors.find(f => !isFirstFloor(f));
+      if (fallback && fallback.id !== selectedFloorId) setSelectedFloorId(fallback.id);
+    }
+  }, [date, anchorDay, floors]);
+
   useEffect(() => { loadFloors(); }, []);
-  useEffect(() => { loadSeatsAndBooking(); }, [loadSeatsAndBooking]);
+  useEffect(() => {
+    const signal = { cancelled: false };
+    loadSeatsAndBooking(signal);
+    return () => { signal.cancelled = true; };
+  }, [loadSeatsAndBooking]);
 
   const scrollViewRef = useRef(null);
   const bookingPanelY = useRef(0);
@@ -287,7 +309,10 @@ export default function HomeScreen() {
                       ]}
                       onPress={() => {
                         if (isPast) return;
+                        const parts = cellDate.split('-');
                         setDate(cellDate);
+                        setPickerYear(parseInt(parts[0], 10));
+                        setPickerMonth(parseInt(parts[1], 10) - 1);
                         setSelectedSeatId(null);
                         setShowCancelConfirm(false);
                         setShowDatePicker(false);
@@ -339,7 +364,7 @@ export default function HomeScreen() {
 
       {/* Seat map */}
       {loading ? (
-        <Loader color={COLORS.primary} style={{ marginTop: 32 }} />
+        <Loader color={COLORS.primary} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300 }} />
       ) : isFloor1Active ? (
         <View style={{ height: 620 }}>
           <FirstFloorSeatLayout

@@ -59,12 +59,13 @@ export function computeRestrictions({ userGroups, anchorDay, date, activeFloor }
   let blockReason = '';
 
   if (isThuFriSdosSdlOverride) {
-    // Thu/Fri override: SDOS/SDL can book any floor, no anchor day blocks apply
+    // Thu/Fri override: SDOS/SDL can book any floor including floor 1
     return {
       restrictToSecondFloor: false,
       blocked: false,
       blockReason: '',
       isAllSurecomp,
+      showFirstFloor: true,
       anchorGroups,
       allowedEmails,
     };
@@ -99,6 +100,7 @@ export function computeRestrictions({ userGroups, anchorDay, date, activeFloor }
     blocked,
     blockReason,
     isAllSurecomp,
+    showFirstFloor: isAllSurecomp,
     anchorGroups,
     allowedEmails,
   };
