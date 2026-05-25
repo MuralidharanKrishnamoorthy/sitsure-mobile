@@ -52,12 +52,15 @@ export default function HomeScreen() {
 
   const userCanBook = canUserBook(employee?.email, restrictions);
 
-  // Mirror web: hide floor 1 from selector when restrictToSecondFloor is true
-  const displayedFloors = restrictions.restrictToSecondFloor
-    ? floors.filter((f) => !isFirstFloor(f)).length > 0
-      ? floors.filter((f) => !isFirstFloor(f))
-      : floors
+  // Hide floor 1 tab for all users when not an All Surecomp anchor day
+  const visibleFloors = !restrictions.isAllSurecomp
+    ? floors.filter((f) => !isFirstFloor(f))
     : floors;
+  const displayedFloors = restrictions.restrictToSecondFloor
+    ? visibleFloors.filter((f) => !isFirstFloor(f)).length > 0
+      ? visibleFloors.filter((f) => !isFirstFloor(f))
+      : visibleFloors
+    : visibleFloors;
 
   const loadFloors = useCallback(async () => {
     try {
@@ -83,6 +86,20 @@ export default function HomeScreen() {
       setSeats(seatData);
       setMyBookedSeat(myBooking);
       setAnchorDay(anchor);
+
+      // If anchor is not All Surecomp and selected floor is floor 1, switch to first non-floor-1 floor
+      const anchorGroups = anchor
+        ? (Array.isArray(anchor.groups) ? anchor.groups : (anchor.groups || '').split(/[,;]+/).map(g => g.trim()))
+            .map(g => g.toUpperCase())
+        : [];
+      const isAllSurecomp = anchorGroups.includes('SDOS') && anchorGroups.includes('SDL') && anchorGroups.includes('QA');
+      if (!isAllSurecomp) {
+        const activeFloor = floors.find(f => f.id === selectedFloorId);
+        if (activeFloor && isFirstFloor(activeFloor)) {
+          const fallback = floors.find(f => !isFirstFloor(f));
+          if (fallback) setSelectedFloorId(fallback.id);
+        }
+      }
       if (isAdmin) {
         const count = await getBookingCountForDate(date);
         setBookingCount(count);
