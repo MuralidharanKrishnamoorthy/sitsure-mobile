@@ -22,7 +22,7 @@ export const COLORS = {
   seatBookedAccent: '#757575',
   seatDisabledBase: '#f5c6cb',
   seatDisabledAccent: '#d32f2f',
-  seatSelectedBase: '#1976d2',
+  seatSelectedBase: '#e8f4ff',
   seatSelectedAccent: '#1976d2',
 
   // Seat status — meeting room

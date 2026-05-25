@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { getEmployeeDetails, getEmployeeRole, getEmployeeGroup, isAdminRole } from '../services/employeeService';
 import { fetchMyPhoto, clearProfileCache } from '../services/graphService';
-import { loadStoredTokens, clearStoredTokens, parseIdToken, validateDomain } from '../services/authService';
+import { loadStoredTokens, clearStoredTokens, parseIdToken, validateDomain, getValidAccessToken } from '../services/authService';
 
 export const UserContext = createContext({
   user: null,
@@ -67,28 +67,28 @@ export function UserProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    let done = false;
+    let active = true;
     const safetyTimer = setTimeout(() => {
-      if (!done) setLoading(false);
+      if (active) setLoading(false);
     }, 5000);
 
     async function restoreSession() {
       setLoading(true);
       try {
-        const { accessToken: token, idToken, account } = await loadStoredTokens();
-        if (token && idToken) {
-          await setAuthData({ accessToken: token, idToken, account });
+        const stored = await loadStoredTokens();
+        if (stored.accessToken && stored.idToken && active) {
+          const validToken = await getValidAccessToken(stored);
+          await setAuthData({ ...stored, accessToken: validToken });
         }
       } catch (err) {
         try { await clearStoredTokens(); } catch (_) {}
       } finally {
-        done = true;
         clearTimeout(safetyTimer);
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
     restoreSession();
-    return () => clearTimeout(safetyTimer);
+    return () => { active = false; clearTimeout(safetyTimer); };
   }, [setAuthData]);
 
   return (

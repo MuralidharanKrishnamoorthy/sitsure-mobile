@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, Image,
+  Alert, Modal, Image,
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 import { getGraphUserProfile } from '../services/graphService';
@@ -17,9 +17,12 @@ import FirstFloorSeatLayout from '../components/seat/FirstFloorSeatLayout';
 import SecondFloorSeatLayout from '../components/seat/SecondFloorSeatLayout';
 import ThirdFloorSeatLayout from '../components/seat/ThirdFloorSeatLayout';
 import { COLORS } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import Loader from '../components/Loader';
 
 export default function HomeScreen() {
   const { employee, isAdmin, accessToken } = useContext(UserContext);
+  const { t } = useTheme();
   const [floors, setFloors] = useState([]);
   const [selectedFloorId, setSelectedFloorId] = useState(null);
   const [date, setDate] = useState(getTodayInKolkata());
@@ -92,12 +95,21 @@ export default function HomeScreen() {
   }, [selectedFloorId, date, employee?.email, isAdmin]);
 
   useEffect(() => { loadFloors(); }, []);
-  useEffect(() => { loadSeatsAndBooking(); }, [selectedFloorId, date]);
+  useEffect(() => { loadSeatsAndBooking(); }, [loadSeatsAndBooking]);
+
+  const scrollViewRef = useRef(null);
+  const bookingPanelY = useRef(0);
 
   const handleSeatPress = (seatId) => {
     if (!userCanBook || myBookedSeat) return;
     setSelectedSeatId((prev) => (prev === seatId ? null : seatId));
     setBookingError('');
+    // scroll to booking panel after state update renders
+    if (seatId) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: bookingPanelY.current - 16, animated: true });
+      }, 80);
+    }
   };
 
   const handleBook = async () => {
@@ -168,9 +180,9 @@ export default function HomeScreen() {
   const floorSeats = seats.filter((s) => s.floor_id === selectedFloorId || s.floor?.id === selectedFloorId);
 
   return (
-    <View style={{ flex: 1 }}>
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Seat Booking</Text>
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+    <ScrollView ref={scrollViewRef} style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: t.text }]}>Seat Booking</Text>
 
       {isAdmin && (
         <View style={styles.adminCard}>
@@ -185,7 +197,7 @@ export default function HomeScreen() {
 
       {/* Date selector */}
       <View style={styles.dateRow}>
-        <Text style={styles.label}>Date</Text>
+        <Text style={[styles.label, { color: t.text }]}>Date</Text>
         <TouchableOpacity
           style={styles.datePill}
           onPress={() => {
@@ -285,7 +297,7 @@ export default function HomeScreen() {
 
       {/* Floor selector */}
       <View style={styles.floorRow}>
-        <Text style={styles.label}>Floor</Text>
+        <Text style={[styles.label, { color: t.text }]}>Floor</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {displayedFloors.map((floor) => (
             <TouchableOpacity
@@ -310,7 +322,7 @@ export default function HomeScreen() {
 
       {/* Seat map */}
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 32 }} />
+        <Loader color={COLORS.primary} style={{ marginTop: 32 }} />
       ) : isFloor1Active ? (
         <View style={{ height: 620 }}>
           <FirstFloorSeatLayout
@@ -398,7 +410,13 @@ export default function HomeScreen() {
 
       {/* Selected seat info */}
       {selectedSeat && !myBookedSeat && (
-        <View style={styles.selectedPanel}>
+        <View
+          style={styles.selectedPanel}
+          onLayout={(e) => {
+            bookingPanelY.current = e.nativeEvent.layout.y;
+            scrollViewRef.current?.scrollTo({ y: bookingPanelY.current - 16, animated: true });
+          }}
+        >
           <Text style={styles.selectedLabel}>
             Selected: {selectedSeat.floor?.name ? `${selectedSeat.floor.name}-${selectedSeat.label}` : selectedSeat.label}
           </Text>
@@ -425,7 +443,7 @@ export default function HomeScreen() {
           disabled={bookingLoading}
         >
           {bookingLoading ? (
-            <ActivityIndicator color="#fff" />
+            <Loader color="#fff" size={8} />
           ) : (
             <Text style={styles.bookBtnText}>Book Your Seat</Text>
           )}
@@ -452,7 +470,7 @@ export default function HomeScreen() {
                 : bookedProfile.seat?.label}
             </Text>
             {bookedProfile.loading ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
+              <Loader color={COLORS.primary} style={{ marginTop: 24 }} />
             ) : bookedProfile.error ? (
               <Text style={styles.profileError}>{bookedProfile.error}</Text>
             ) : bookedProfile.data ? (
@@ -507,7 +525,7 @@ const styles = StyleSheet.create({
   label: { fontWeight: '600', marginRight: 8, color: COLORS.textPrimaryLight },
   dateValue: { color: COLORS.textPrimaryLight, fontSize: 14 },
   floorChip: {
-    borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, marginRight: 8,
+    borderRadius: 6, paddingVertical: 6, paddingHorizontal: 14, marginRight: 8,
     backgroundColor: '#eee', borderWidth: 1, borderColor: '#ddd',
   },
   floorChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
@@ -550,7 +568,7 @@ const styles = StyleSheet.create({
   datePill: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.primary,
-    borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14,
+    borderRadius: 6, paddingVertical: 6, paddingHorizontal: 14,
   },
   datePillText: { color: COLORS.primary, fontWeight: '600', fontSize: 14, marginRight: 4 },
   datePillIcon: { color: COLORS.primary, fontSize: 10 },
@@ -571,7 +589,7 @@ const styles = StyleSheet.create({
   pickerCell: {
     width: '14.28%', aspectRatio: 1,
     alignItems: 'center', justifyContent: 'center',
-    borderRadius: 20, marginVertical: 2,
+    borderRadius: 6, marginVertical: 2,
   },
   pickerCellSelected: { backgroundColor: COLORS.primary },
   pickerCellToday: { borderWidth: 1.5, borderColor: COLORS.primary },

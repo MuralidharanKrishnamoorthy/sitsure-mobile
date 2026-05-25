@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator, Alert,
+  TouchableOpacity, Alert,
 } from 'react-native';
 import { getFloors, createFloor, updateFloor } from '../../services/floorService';
 import { COLORS } from '../../theme/colors';
+import Loader from '../../components/Loader';
 
 export default function FloorManagementScreen() {
   const [floors, setFloors] = useState([]);
@@ -95,7 +96,7 @@ export default function FloorManagementScreen() {
         </TouchableOpacity>
       </View>
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} />
+        <Loader color={COLORS.primary} />
       ) : (
         <FlatList
           data={floors}

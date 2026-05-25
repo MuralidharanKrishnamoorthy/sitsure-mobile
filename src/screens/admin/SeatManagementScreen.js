@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Switch, ActivityIndicator, Alert, FlatList,
+  TextInput, Switch, Alert, FlatList,
 } from 'react-native';
 import { UserContext } from '../../context/UserContext';
 import { getFloors, getSeatsByFloor, addSeat, toggleSeat, updateSeatMonitor } from '../../services/seatService';
 import { COLORS } from '../../theme/colors';
+import Loader from '../../components/Loader';
 
 export default function SeatManagementScreen() {
   const { employee } = useContext(UserContext);
@@ -137,7 +138,7 @@ export default function SeatManagementScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
+        <Loader color={COLORS.primary} style={{ marginTop: 24 }} />
       ) : (
         <FlatList
           data={seats}

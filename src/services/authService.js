@@ -46,10 +46,10 @@ export function validateDomain(email) {
 
 const KEYCHAIN_SERVICE = 'com.venzo.sitsure';
 
-export async function storeTokens({ accessToken, idToken, refreshToken, account }) {
+export async function storeTokens({ accessToken, idToken, refreshToken, accessTokenExpirationDate, account }) {
   await Keychain.setGenericPassword(
     'sitsure_tokens',
-    JSON.stringify({ accessToken, idToken, refreshToken, account }),
+    JSON.stringify({ accessToken, idToken, refreshToken, accessTokenExpirationDate, account }),
     { service: KEYCHAIN_SERVICE },
   );
 }
@@ -57,16 +57,40 @@ export async function storeTokens({ accessToken, idToken, refreshToken, account 
 export async function loadStoredTokens() {
   try {
     const creds = await Keychain.getGenericPassword({ service: KEYCHAIN_SERVICE });
-    if (!creds) return { accessToken: null, idToken: null, refreshToken: null, account: null };
+    if (!creds) return { accessToken: null, idToken: null, refreshToken: null, accessTokenExpirationDate: null, account: null };
     const data = JSON.parse(creds.password);
     return {
       accessToken: data.accessToken || null,
       idToken: data.idToken || null,
       refreshToken: data.refreshToken || null,
+      accessTokenExpirationDate: data.accessTokenExpirationDate || null,
       account: data.account || null,
     };
   } catch {
-    return { accessToken: null, idToken: null, refreshToken: null, account: null };
+    return { accessToken: null, idToken: null, refreshToken: null, accessTokenExpirationDate: null, account: null };
+  }
+}
+
+export async function getValidAccessToken(stored) {
+  const { accessToken, refreshToken, accessTokenExpirationDate } = stored;
+  const needsRefresh =
+    !accessTokenExpirationDate ||
+    new Date(accessTokenExpirationDate).getTime() - Date.now() < 60 * 1000;
+
+  if (!needsRefresh) return accessToken;
+
+  try {
+    const result = await refreshAccessToken(refreshToken);
+    await storeTokens({
+      accessToken: result.accessToken,
+      idToken: stored.idToken,
+      refreshToken: result.refreshToken || refreshToken,
+      accessTokenExpirationDate: result.accessTokenExpirationDate,
+      account: stored.account,
+    });
+    return result.accessToken;
+  } catch {
+    throw new Error('session_expired');
   }
 }
 

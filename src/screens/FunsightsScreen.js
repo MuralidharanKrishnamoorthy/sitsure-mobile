@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, Image,
+  View, Text, StyleSheet, ScrollView, Image,
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 import { getBookingAggregates } from '../services/bookingService';
 import { getGraphUserProfile } from '../services/graphService';
 import { formatDate } from '../utils/dateUtils';
 import { COLORS } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import Loader from '../components/Loader';
 
 const CHART_COLORS = COLORS.chartColors;
 
 export default function FunsightsScreen() {
   const { accessToken } = useContext(UserContext);
+  const { t } = useTheme();
   const [loading, setLoading] = useState(false);
   const [heroes, setHeroes] = useState([]);
   const [popularDays, setPopularDays] = useState([]);
@@ -70,14 +73,14 @@ export default function FunsightsScreen() {
   const maxHeroCount = heroes[0]?.count || 1;
   const maxSeatCount = favSeats[0]?.count || 1;
 
-  if (loading) return <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />;
+  if (loading) return <Loader color={COLORS.primary} style={{ marginTop: 40 }} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Fun Insights</Text>
+    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: t.text }]}>Fun Insights</Text>
 
       {/* Seat Heroes */}
-      <Text style={styles.section}>Top 5 Seat Heroes</Text>
+      <Text style={[styles.section, { color: t.text }]}>Top 5 Seat Heroes</Text>
       {heroes.map((hero, index) => (
         <View key={hero.email} style={[styles.heroRow, { backgroundColor: `${CHART_COLORS[index]}20` }]}>
           <View style={styles.heroAvatar}>
@@ -92,9 +95,9 @@ export default function FunsightsScreen() {
             )}
           </View>
           <View style={styles.heroInfo}>
-            <Text style={styles.heroName}>{hero.profile?.displayName || hero.email}</Text>
-            <Text style={styles.heroEmail}>{hero.email}</Text>
-            <View style={styles.progressBarBg}>
+            <Text style={[styles.heroName, { color: t.text }]}>{hero.profile?.displayName || hero.email}</Text>
+            <Text style={[styles.heroEmail, { color: t.textSub }]}>{hero.email}</Text>
+            <View style={[styles.progressBarBg, { backgroundColor: t.dark ? '#2a2d3a' : '#e0e0e0' }]}>
               <View
                 style={[styles.progressBarFill, {
                   width: `${(hero.count / maxHeroCount) * 100}%`,
@@ -103,31 +106,31 @@ export default function FunsightsScreen() {
               />
             </View>
           </View>
-          <Text style={styles.heroCount}>{hero.count}</Text>
+          <Text style={[styles.heroCount, { color: t.text }]}>{hero.count}</Text>
         </View>
       ))}
 
       <View style={styles.twoCol}>
         {/* Popular Days */}
-        <View style={styles.colCard}>
-          <Text style={styles.section}>Popular Days</Text>
+        <View style={[styles.colCard, { backgroundColor: t.card }]}>
+          <Text style={[styles.section, { color: t.text }]}>Popular Days</Text>
           {popularDays.map(({ date, count }) => (
             <View key={date} style={styles.popularDayRow}>
-              <Text style={styles.popularDayDate}>{formatDate(date)}</Text>
-              <Text style={styles.popularDayCount}>{count} bookings</Text>
+              <Text style={[styles.popularDayDate, { color: t.text }]}>{formatDate(date)}</Text>
+              <Text style={[styles.popularDayCount, { color: t.textSub }]}>{count} bookings</Text>
             </View>
           ))}
         </View>
 
         {/* Favourite Seats */}
-        <View style={styles.colCard}>
-          <Text style={styles.section}>Favourite Seats</Text>
+        <View style={[styles.colCard, { backgroundColor: t.card }]}>
+          <Text style={[styles.section, { color: t.text }]}>Favourite Seats</Text>
           {favSeats.map(({ seat, count }, index) => (
             <View key={seat.id} style={styles.favSeatRow}>
-              <Text style={styles.favSeatLabel}>
+              <Text style={[styles.favSeatLabel, { color: t.text }]}>
                 {seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label}
               </Text>
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: t.dark ? '#2a2d3a' : '#e0e0e0' }]}>
                 <View
                   style={[styles.progressBarFill, {
                     width: `${(count / maxSeatCount) * 100}%`,
@@ -135,7 +138,7 @@ export default function FunsightsScreen() {
                   }]}
                 />
               </View>
-              <Text style={styles.favSeatCount}>{count} bookings</Text>
+              <Text style={[styles.favSeatCount, { color: t.textSub }]}>{count} bookings</Text>
             </View>
           ))}
         </View>

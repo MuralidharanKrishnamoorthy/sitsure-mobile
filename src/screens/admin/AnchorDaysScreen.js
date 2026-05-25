@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator, Alert, ScrollView,
+  TouchableOpacity, Alert, ScrollView,
 } from 'react-native';
 import { getAnchorDays, upsertAnchorDay } from '../../services/bookingService';
 import { getTodayInKolkata, formatDate } from '../../utils/dateUtils';
 import { COLORS } from '../../theme/colors';
+import Loader from '../../components/Loader';
 
 const GROUP_OPTIONS = ['ALL', 'SDOS', 'SDL', 'QA'];
 const GROUP_COLORS = COLORS.groupColors;
@@ -123,7 +124,7 @@ export default function AnchorDaysScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} />
+        <Loader color={COLORS.primary} />
       ) : (
         <>
           <Text style={styles.sectionTitle}>Upcoming Anchor Days</Text>

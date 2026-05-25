@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator, Alert, Image,
+  TouchableOpacity, Alert, Image,
 } from 'react-native';
 import { UserContext } from '../../context/UserContext';
 import { getEmployeeGroups, upsertEmployeeGroup } from '../../services/employeeGroupService';
 import { getGraphUserProfile } from '../../services/graphService';
 import { COLORS } from '../../theme/colors';
+import Loader from '../../components/Loader';
 
 const GROUP_OPTIONS = ['SDOS', 'SDL', 'QA', 'VENZO'];
 const GROUP_COLORS = COLORS.groupColors;
@@ -147,7 +148,7 @@ export default function EmployeeGroupsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} />
+        <Loader color={COLORS.primary} />
       ) : (
         <FlatList
           data={groups}

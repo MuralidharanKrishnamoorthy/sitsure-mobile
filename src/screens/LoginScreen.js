@@ -33,6 +33,7 @@ export default function LoginScreen() {
         accessToken: result.accessToken,
         idToken: result.idToken,
         refreshToken: result.refreshToken,
+        accessTokenExpirationDate: result.accessTokenExpirationDate,
         account: { email, name: parsed?.name },
       });
 

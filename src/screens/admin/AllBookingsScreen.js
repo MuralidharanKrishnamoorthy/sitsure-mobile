@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, TextInput,
+  TextInput,
 } from 'react-native';
 import { UserContext } from '../../context/UserContext';
 import { getBookingsByDate } from '../../services/bookingService';
@@ -9,6 +9,7 @@ import { getEmployeeDetails } from '../../services/employeeService';
 import { getGraphUserProfile } from '../../services/graphService';
 import { getTodayInKolkata, formatDate } from '../../utils/dateUtils';
 import { COLORS } from '../../theme/colors';
+import Loader from '../../components/Loader';
 
 export default function AllBookingsScreen() {
   const { accessToken } = useContext(UserContext);
@@ -104,7 +105,7 @@ export default function AllBookingsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
+        <Loader color={COLORS.primary} style={{ marginTop: 24 }} />
       ) : (
         <FlatList
           data={paged}

@@ -8,10 +8,11 @@ import {
   Dimensions,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
+import { WorkstationSeatCell } from './WorkstationSeatCell';
 
 // ─── Base dimensions ──────────────────────────────────────────────────────────
 const SEAT_W = 72;
-const SEAT_H = 44;
+const SEAT_H = 64;
 const GAP_X = 10;
 const BLOCK_GAP = 36;
 const SECTION_GAP = 20;
@@ -46,7 +47,7 @@ function getSeatColor(seat, selectedSeatId, myBookedSeatId, userEmail) {
   if (isMyBooked)
     return { bg: COLORS.myBookingBg, border: COLORS.myBookingBorder, text: COLORS.myBookingText };
   if (isSelected)
-    return { bg: COLORS.seatSelectedBase, border: COLORS.seatSelectedAccent, text: '#fff' };
+    return { bg: COLORS.seatSelectedBase, border: COLORS.seatSelectedAccent, text: COLORS.seatSelectedAccent };
   if (isDisabled)
     return { bg: COLORS.seatDisabledBase, border: COLORS.seatDisabledAccent, text: COLORS.seatDisabledAccent };
   if (isBooked)
@@ -101,8 +102,6 @@ function SeatCell({
     ? (!seat.enabled || hasAvailableStandard)
     : !seat.enabled;
 
-  const label = seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label;
-
   const handlePress = () => {
     if (isTouchDisabled) return;
     if (isOtherBooked) {
@@ -113,45 +112,15 @@ function SeatCell({
   };
 
   return (
-    <TouchableOpacity
-      style={[
-        {
-          width: seatW,
-          height: seatH,
-          borderRadius: 6,
-          borderWidth: 2,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.bg,
-          borderColor: colors.border,
-        },
-        style,
-      ]}
+    <WorkstationSeatCell
+      seat={seat}
+      colors={colors}
+      seatW={seatW}
+      seatH={seatH}
       onPress={handlePress}
       disabled={isTouchDisabled}
-      activeOpacity={0.75}
-    >
-      <Text
-        style={{ fontSize: Math.max(9, seatH * 0.28), fontWeight: '700', color: colors.text }}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {label}
-      </Text>
-      {seat.has_monitor && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 3,
-            right: 3,
-            width: 7,
-            height: 7,
-            borderRadius: 3.5,
-            backgroundColor: COLORS.monitorBadge,
-          }}
-        />
-      )}
-    </TouchableOpacity>
+      style={style}
+    />
   );
 }
 
