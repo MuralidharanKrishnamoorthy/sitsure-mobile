@@ -12,7 +12,7 @@ export default function Loader({ color, size = 48, style }) {
       duration: 350,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [opacity]);
 
   return (
     <Animated.View style={[styles.wrap, style, { opacity }]}>

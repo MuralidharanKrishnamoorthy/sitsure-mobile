@@ -78,7 +78,7 @@ export function UserProvider({ children }) {
         const stored = await loadStoredTokens();
         if (stored.accessToken && stored.idToken && active) {
           const validToken = await getValidAccessToken(stored);
-          await setAuthData({ ...stored, accessToken: validToken });
+          if (active) await setAuthData({ ...stored, accessToken: validToken });
         }
       } catch (err) {
         try { await clearStoredTokens(); } catch (_) {}

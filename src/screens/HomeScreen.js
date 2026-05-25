@@ -82,9 +82,8 @@ export default function HomeScreen() {
         getSeatBookings(date, selectedFloorId),
         getUserBookingForDate(employee?.email, date),
       ]);
-      if (signal?.cancelled) {
-        return;
-      }
+      const stale = () => signal?.cancelled || !mountedRef.current;
+      if (stale()) return;
       setSeats(seatData);
       setMyBookedSeat(myBooking);
       if (isAdmin) {
@@ -92,10 +91,10 @@ export default function HomeScreen() {
         setBookingCount(count);
       }
     } catch (err) {
-      if (signal?.cancelled) return;
+      if (signal?.cancelled || !mountedRef.current) return;
       Alert.alert('Error', 'Failed to load seat data');
     } finally {
-      if (!signal?.cancelled) setLoading(false);
+      if (!signal?.cancelled && mountedRef.current) setLoading(false);
     }
   }, [selectedFloorId, date, employee?.email, isAdmin]);
 
@@ -138,6 +137,8 @@ export default function HomeScreen() {
 
   const scrollViewRef = useRef(null);
   const bookingPanelY = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   const handleSeatPress = (seatId) => {
     if (!userCanBook || myBookedSeat) return;

@@ -100,7 +100,7 @@ export function computeRestrictions({ userGroups, anchorDay, date, activeFloor }
     blocked,
     blockReason,
     isAllSurecomp,
-    showFirstFloor: isAllSurecomp,
+    showFirstFloor: isAllSurecomp || isThurFri,
     anchorGroups,
     allowedEmails,
   };

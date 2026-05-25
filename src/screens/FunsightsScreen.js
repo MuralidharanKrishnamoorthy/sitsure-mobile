@@ -73,7 +73,7 @@ export default function FunsightsScreen() {
   const maxHeroCount = heroes[0]?.count || 1;
   const maxSeatCount = favSeats[0]?.count || 1;
 
-  if (loading) return <Loader color={COLORS.primary} style={{ marginTop: 40 }} />;
+  if (loading) return <Loader color={COLORS.primary} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>

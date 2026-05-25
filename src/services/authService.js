@@ -79,6 +79,8 @@ export async function getValidAccessToken(stored) {
 
   if (!needsRefresh) return accessToken;
 
+  if (!refreshToken) throw new Error('session_expired');
+
   try {
     const result = await refreshAccessToken(refreshToken);
     await storeTokens({
