@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { UserContext } from '../context/UserContext';
 import { getUserBookingHistory, cancelBookingById } from '../services/bookingService';
@@ -11,15 +12,15 @@ import { COLORS } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
 import Loader from '../components/Loader';
 
-// ── Status config ─────────────────────────────────────────────────────────────
+// ── Status config — uses rgba so it works on both dark and light surfaces ──────
 const STATUS = {
-  booked:    { bg: '#edfbee', dot: '#2e7d32', text: '#1b5e20', bar: '#43a047', label: 'Booked' },
-  completed: { bg: '#e8f4ff', dot: '#1565c0', text: '#0d47a1', bar: '#1976d2', label: 'Completed' },
-  cancelled: { bg: '#fff0f0', dot: '#c62828', text: '#b71c1c', bar: '#e53935', label: 'Cancelled' },
+  booked:    { bg: 'rgba(76,175,80,0.12)',   dot: '#4caf50', text: '#4caf50', bar: '#4caf50', label: 'Booked' },
+  completed: { bg: 'rgba(66,165,245,0.12)',  dot: '#42a5f5', text: '#42a5f5', bar: '#42a5f5', label: 'Completed' },
+  cancelled: { bg: 'rgba(239,83,80,0.12)',   dot: '#ef5350', text: '#ef5350', bar: '#ef5350', label: 'Cancelled' },
 };
 
 function StatusPill({ status }) {
-  const cfg = STATUS[status] || { bg: '#fff3e0', dot: '#e65100', text: '#bf360c', label: status };
+  const cfg = STATUS[status] || { bg: 'rgba(254,116,42,0.12)', dot: COLORS.primary, text: COLORS.primary, label: status };
   return (
     <View style={[pillStyles.wrap, { backgroundColor: cfg.bg }]}>
       <View style={[pillStyles.dot, { backgroundColor: cfg.dot }]} />
@@ -43,12 +44,12 @@ function StatsRow({ bookings, t }) {
     <View style={[statStyles.row, { backgroundColor: t?.card || '#fff' }]}>
       {[
         { value: total,     label: 'Total',     color: COLORS.primary },
-        { value: completed, label: 'Completed', color: '#1565c0' },
-        { value: cancelled, label: 'Cancelled', color: '#c62828' },
+        { value: completed, label: 'Completed', color: COLORS.statusCompleted },
+        { value: cancelled, label: 'Cancelled', color: COLORS.statusCancelled },
       ].map((s, i) => (
-        <View key={s.label} style={[statStyles.cell, i < 2 && statStyles.cellBorder]}>
+        <View key={s.label} style={[statStyles.cell, i < 2 && { borderRightWidth: 1, borderRightColor: t?.divider || '#f0f0f0' }]}>
           <Text style={[statStyles.val, { color: s.color }]}>{s.value}</Text>
-          <Text style={[statStyles.lbl, { color: t?.textSub || '#aaa' }]}>{s.label}</Text>
+          <Text style={[statStyles.lbl, { color: t?.textTertiary || t?.textSub || '#aaa' }]}>{s.label}</Text>
         </View>
       ))}
     </View>
@@ -57,7 +58,6 @@ function StatsRow({ bookings, t }) {
 const statStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderRadius: 14,
     marginBottom: 16,
     paddingVertical: 14,
@@ -68,9 +68,8 @@ const statStyles = StyleSheet.create({
     elevation: 3,
   },
   cell: { flex: 1, alignItems: 'center' },
-  cellBorder: { borderRightWidth: 1, borderRightColor: '#f0f0f0' },
   val: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
-  lbl: { fontSize: 10, color: '#aaa', fontWeight: '600', marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase' },
+  lbl: { fontSize: 10, fontWeight: '600', marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase' },
 });
 
 // ── Booking card ──────────────────────────────────────────────────────────────
@@ -116,6 +115,7 @@ const cardStyles = StyleSheet.create({
 export default function HistoryScreen() {
   const { employee } = useContext(UserContext);
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const today = getTodayInKolkata();
@@ -145,7 +145,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: t.bg }]}>
+    <View style={[styles.container, { backgroundColor: t.bg, paddingTop: Math.max(52, insets.top + 16) }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: t.text }]}>Booking History</Text>
       </View>
@@ -179,9 +179,8 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bgLight,
     paddingHorizontal: 16,
-    paddingTop: 52,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',

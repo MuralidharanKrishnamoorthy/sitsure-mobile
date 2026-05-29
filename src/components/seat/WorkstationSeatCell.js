@@ -51,7 +51,6 @@ export function WorkstationSeatCell({
 
   // ── fixed realistic colors (independent of booking state) ─────────────────
   // Monitor screen — dark charcoal like a real display
-  const monScreenBg   = '#2c3340';
   const monScreenLit  = '#3d4f6b';
   const monBezelColor = '#4a5568';
   const monGlare      = 'rgba(255,255,255,0.22)';
@@ -151,13 +150,19 @@ export function WorkstationSeatCell({
         style={{
           width: seatW,
           height: seatH - labelH - 2,
-          borderWidth: 2,
+          borderWidth: 1.5,
           borderColor: colors.border,
-          borderRadius: 8,
+          borderRadius: 12,
           backgroundColor: colors.bg,
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
+          // glow shadow driven by seat state color
+          shadowColor: colors.border,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.22,
+          shadowRadius: 6,
+          elevation: 3,
         }}
       >
       <Svg width={svgW} height={svgH}>
@@ -351,12 +356,13 @@ export function WorkstationSeatCell({
       {/* Label — bigger, below the box */}
       <Text
         style={{
-          fontSize: Math.max(10, labelH * 0.82),
-          fontWeight: '800',
+          fontSize: Math.max(10, labelH * 0.80),
+          fontWeight: '700',
           color: colors.text,
-          letterSpacing: 0.2,
-          marginTop: 3,
+          letterSpacing: 0.4,
+          marginTop: 4,
           textAlign: 'center',
+          opacity: 0.85,
         }}
         numberOfLines={1}
       >

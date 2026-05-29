@@ -80,3 +80,7 @@ yarn-error.log
 
 # package-lock (generated)
 package-lock.json
+
+# Claude Code local config
+.claude/
+CLAUDE.md

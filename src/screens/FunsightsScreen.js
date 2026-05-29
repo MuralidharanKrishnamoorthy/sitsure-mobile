@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image,
+  View, Text, StyleSheet, ScrollView, Image, Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const { width: SCREEN_W } = Dimensions.get('window');
 import { UserContext } from '../context/UserContext';
 import { getBookingAggregates } from '../services/bookingService';
 import { getGraphUserProfile } from '../services/graphService';
@@ -15,6 +18,9 @@ const CHART_COLORS = COLORS.chartColors;
 export default function FunsightsScreen() {
   const { accessToken } = useContext(UserContext);
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
+  // Stack columns on very small screens
+  const useColumns = SCREEN_W >= 360;
   const [loading, setLoading] = useState(false);
   const [heroes, setHeroes] = useState([]);
   const [popularDays, setPopularDays] = useState([]);
@@ -76,7 +82,11 @@ export default function FunsightsScreen() {
   if (loading) return <Loader color={COLORS.primary} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: t.bg }]}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(16, insets.top + 8) }]}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={[styles.title, { color: t.text }]}>Fun Insights</Text>
 
       {/* Seat Heroes */}
@@ -97,7 +107,7 @@ export default function FunsightsScreen() {
           <View style={styles.heroInfo}>
             <Text style={[styles.heroName, { color: t.text }]}>{hero.profile?.displayName || hero.email}</Text>
             <Text style={[styles.heroEmail, { color: t.textSub }]}>{hero.email}</Text>
-            <View style={[styles.progressBarBg, { backgroundColor: t.dark ? '#2a2d3a' : '#e0e0e0' }]}>
+            <View style={[styles.progressBarBg, { backgroundColor: t.divider }]}>
               <View
                 style={[styles.progressBarFill, {
                   width: `${(hero.count / maxHeroCount) * 100}%`,
@@ -110,12 +120,12 @@ export default function FunsightsScreen() {
         </View>
       ))}
 
-      <View style={styles.twoCol}>
+      <View style={[styles.twoCol, !useColumns && styles.twoColStack]}>
         {/* Popular Days */}
-        <View style={[styles.colCard, { backgroundColor: t.card }]}>
+        <View style={[styles.colCard, { backgroundColor: t.card }, !useColumns && styles.colCardFull]}>
           <Text style={[styles.section, { color: t.text }]}>Popular Days</Text>
           {popularDays.map(({ date, count }) => (
-            <View key={date} style={styles.popularDayRow}>
+            <View key={date} style={[styles.popularDayRow, { backgroundColor: t.chipBg }]}>
               <Text style={[styles.popularDayDate, { color: t.text }]}>{formatDate(date)}</Text>
               <Text style={[styles.popularDayCount, { color: t.textSub }]}>{count} bookings</Text>
             </View>
@@ -123,14 +133,14 @@ export default function FunsightsScreen() {
         </View>
 
         {/* Favourite Seats */}
-        <View style={[styles.colCard, { backgroundColor: t.card }]}>
+        <View style={[styles.colCard, { backgroundColor: t.card }, !useColumns && styles.colCardFull]}>
           <Text style={[styles.section, { color: t.text }]}>Favourite Seats</Text>
           {favSeats.map(({ seat, count }, index) => (
             <View key={seat.id} style={styles.favSeatRow}>
               <Text style={[styles.favSeatLabel, { color: t.text }]}>
                 {seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label}
               </Text>
-              <View style={[styles.progressBarBg, { backgroundColor: t.dark ? '#2a2d3a' : '#e0e0e0' }]}>
+              <View style={[styles.progressBarBg, { backgroundColor: t.divider }]}>
                 <View
                   style={[styles.progressBarFill, {
                     width: `${(count / maxSeatCount) * 100}%`,
@@ -148,10 +158,10 @@ export default function FunsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgLight },
-  content: { padding: 16 },
-  title: { fontSize: 24, fontWeight: '700', color: COLORS.primary, marginBottom: 16 },
-  section: { fontSize: 17, fontWeight: '700', color: '#212121', marginBottom: 8, marginTop: 8 },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 32 },
+  title: { fontSize: 24, fontWeight: '800', color: COLORS.primary, marginBottom: 16, letterSpacing: -0.5 },
+  section: { fontSize: 15, fontWeight: '700', marginBottom: 10, marginTop: 4, letterSpacing: -0.2 },
   heroRow: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 8,
     padding: 10, marginBottom: 8,
@@ -166,8 +176,10 @@ const styles = StyleSheet.create({
   heroCount: { fontWeight: '700', fontSize: 17, marginLeft: 8, color: '#212121' },
   progressBarBg: { height: 7, backgroundColor: '#e0e0e0', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: 7, borderRadius: 4 },
-  twoCol: { flexDirection: 'row', gap: 8 },
-  colCard: { flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 12 },
+  twoCol: { flexDirection: 'row', gap: 10 },
+  twoColStack: { flexDirection: 'column' },
+  colCard: { flex: 1, borderRadius: 12, padding: 14 },
+  colCardFull: { flex: 0, width: '100%' },
   popularDayRow: {
     backgroundColor: 'rgba(25,118,210,0.08)', borderRadius: 6, padding: 9, marginBottom: 6,
   },

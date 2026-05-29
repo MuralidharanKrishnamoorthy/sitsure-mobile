@@ -140,19 +140,19 @@ function MainTabs() {
           backgroundColor: t.tabBar,
           borderTopColor: t.tabBarBorder,
           borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
+          height: 66,
+          paddingBottom: 10,
           paddingTop: 6,
-          elevation: 12,
+          elevation: 16,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: t.dark ? 0.45 : 0.08,
+          shadowRadius: 16,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
-          letterSpacing: 0.2,
+          fontWeight: '700',
+          letterSpacing: 0.3,
         },
         tabBarIcon: ({ color, size, focused }) => (
           <TabIcon name={route.name} color={color} size={size + 2} focused={focused} />
@@ -191,7 +191,7 @@ function CustomDrawerContent(props) {
   return (
     <DrawerContentScrollView {...props} style={{ backgroundColor: t.drawerBg }}>
       {/* Profile section */}
-      <View style={styles.profileSection}>
+      <View style={[styles.profileSection, { borderBottomColor: t.divider }]}>
         <View style={styles.profileAvatar}>
           {employee?.profilePic ? (
             <Image source={{ uri: employee.profilePic }} style={styles.profileImg} />
@@ -250,9 +250,13 @@ function AdminDrawer() {
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.primary },
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+          elevation: 0, shadowOpacity: 0,
+          borderBottomWidth: 0,
+        },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '800', fontSize: 17, letterSpacing: -0.2 },
         drawerActiveTintColor: t.drawerActiveText,
         drawerActiveBackgroundColor: t.drawerActiveBg,
         drawerInactiveTintColor: t.textSub,
@@ -280,7 +284,8 @@ export default function AppNavigator() {
     return (
       <View style={styles.splash}>
         <Text style={styles.splashText}>SitSure</Text>
-        <Loader color="#fff" size={60} style={{ marginTop: 24 }} />
+        <Text style={styles.splashSub}>Workspace Booking</Text>
+        <Loader color={COLORS.primary} size={60} style={{ marginTop: 32 }} />
       </View>
     );
   }
@@ -299,44 +304,67 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-  splash: { flex: 1, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-  splashText: { color: '#fff', fontSize: 36, fontWeight: '800' },
+  splash: {
+    flex: 1, backgroundColor: COLORS.bgDark,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  splashText: {
+    color: COLORS.primary, fontSize: 42, fontWeight: '900',
+    letterSpacing: -1.5,
+  },
+  splashSub: {
+    color: COLORS.textSecondaryDark, fontSize: 13, fontWeight: '500',
+    marginTop: 6, letterSpacing: 2, textTransform: 'uppercase',
+  },
+
+  // ── Drawer profile section ────────────────────────────────────────────────────
   profileSection: {
-    flexDirection: 'row', alignItems: 'center', padding: 16,
-    backgroundColor: COLORS.primary, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 20,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 6,
   },
-  profileAvatar: { marginRight: 12 },
-  profileImg: { width: 44, height: 44, borderRadius: 22 },
+  profileAvatar: { marginRight: 14 },
+  profileImg: { width: 48, height: 48, borderRadius: 24 },
   profileAvatarFallback: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center',
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: COLORS.primaryMuted,
+    borderWidth: 2, borderColor: COLORS.primaryGlow,
+    justifyContent: 'center', alignItems: 'center',
   },
-  profileInitial: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  profileInitial: { color: COLORS.primary, fontWeight: '800', fontSize: 20 },
   profileInfo: { flex: 1 },
-  profileName: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  profileEmail: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
-  profileEmpId: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 },
+  profileName: { color: COLORS.textPrimaryDark, fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
+  profileEmail: { color: COLORS.textSecondaryDark, fontSize: 12, marginTop: 2 },
+  profileEmpId: {
+    color: COLORS.primary, fontSize: 11, marginTop: 3,
+    fontWeight: '700', letterSpacing: 0.5,
+  },
+
+  // ── Theme toggle ──────────────────────────────────────────────────────────────
   themeToggleRow: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 16, marginTop: 8, marginBottom: 4,
-    paddingVertical: 12, paddingHorizontal: 12,
-    borderRadius: 10, borderWidth: 1,
+    marginHorizontal: 12, marginTop: 8, marginBottom: 4,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1,
   },
   themeToggleIcon: {
-    width: 32, height: 32, borderRadius: 8,
+    width: 34, height: 34, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
   themeToggleText: { flex: 1, fontSize: 14, fontWeight: '600' },
   themeTogglePill: {
-    width: 36, height: 20, borderRadius: 10,
+    width: 38, height: 22, borderRadius: 11,
     justifyContent: 'center', paddingHorizontal: 3,
   },
-  themeToggleDot: {
-    width: 14, height: 14, borderRadius: 7,
-  },
+  themeToggleDot: { width: 16, height: 16, borderRadius: 8 },
+
+  // ── Logout button ─────────────────────────────────────────────────────────────
   logoutBtn: {
-    margin: 16, backgroundColor: '#ffebee', borderRadius: 6,
-    padding: 12, alignItems: 'center',
+    margin: 16, marginTop: 8,
+    backgroundColor: 'rgba(239,83,80,0.10)',
+    borderRadius: 12, padding: 14, alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(239,83,80,0.25)',
   },
-  logoutText: { color: '#d32f2f', fontWeight: '700' },
+  logoutText: { color: '#ef5350', fontWeight: '700', fontSize: 14 },
 });

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput,
+  TextInput, Dimensions,
 } from 'react-native';
 import { UserContext } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getBookingsByDate } from '../../services/bookingService';
 import { getEmployeeDetails } from '../../services/employeeService';
 import { getGraphUserProfile } from '../../services/graphService';
@@ -11,8 +12,11 @@ import { getTodayInKolkata, formatDate } from '../../utils/dateUtils';
 import { COLORS } from '../../theme/colors';
 import Loader from '../../components/Loader';
 
+const { width: SCREEN_W } = Dimensions.get('window');
+
 export default function AllBookingsScreen() {
   const { accessToken } = useContext(UserContext);
+  const { t } = useTheme();
   const [date, setDate] = useState(getTodayInKolkata());
   const [bookings, setBookings] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -60,36 +64,39 @@ export default function AllBookingsScreen() {
     const floorName = item.seat?.floor?.name || item.floor?.name || '';
     const seatLabel = item.seat?.label || '';
     return (
-      <View style={styles.row}>
+      <View style={[styles.row, { backgroundColor: t.card }]}>
         <View style={styles.empCell}>
           <View style={styles.empAvatar}>
             <Text style={styles.empAvatarText}>
               {(p.name || item.user_email)[0].toUpperCase()}
             </Text>
           </View>
-          <View>
-            <Text style={styles.empName}>{p.name || item.user_email}</Text>
-            {p.empid && <Text style={styles.empId}>{p.empid}</Text>}
+          <View style={styles.empTextWrap}>
+            <Text style={[styles.empName, { color: t.text }]} numberOfLines={1}>{p.name || item.user_email}</Text>
+            {p.empid && <Text style={[styles.empId, { color: t.textSub }]}>{p.empid}</Text>}
           </View>
         </View>
-        <Text style={styles.cell}>{seatLabel}</Text>
-        <Text style={styles.cell}>{floorName}</Text>
-        <Text style={styles.cellSm}>
-          {item.created_at ? new Date(item.created_at).toLocaleTimeString() : '-'}
-        </Text>
+        <Text style={[styles.cell, { color: t.text }]}>{seatLabel}</Text>
+        <Text style={[styles.cell, { color: t.textSub }]}>{floorName}</Text>
+        {SCREEN_W > 340 && (
+          <Text style={[styles.cellSm, { color: t.textTertiary }]}>
+            {item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+          </Text>
+        )}
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Seat Bookings By Date</Text>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      <Text style={[styles.title, { color: COLORS.primary }]}>Seat Bookings By Date</Text>
       <View style={styles.dateRow}>
         <TextInput
-          style={styles.dateInput}
+          style={[styles.dateInput, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text }]}
           value={date}
           onChangeText={setDate}
           placeholder="YYYY-MM-DD"
+          placeholderTextColor={t.textTertiary}
           onSubmitEditing={loadBookings}
         />
         <TouchableOpacity style={styles.refreshBtn} onPress={loadBookings}>
@@ -97,11 +104,12 @@ export default function AllBookingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.header}>
-        <Text style={[styles.headerCell, { flex: 2 }]}>Employee</Text>
-        <Text style={styles.headerCell}>Seat</Text>
-        <Text style={styles.headerCell}>Floor</Text>
-        <Text style={styles.headerCellSm}>Time</Text>
+      <View style={[styles.header, { backgroundColor: t.card, borderColor: t.cardBorder, borderWidth: 1 }]}>
+        <Text style={[styles.headerCell, { flex: 2, color: t.textSub }]}>Employee</Text>
+        <Text style={[styles.headerCell, { color: t.textSub }]}>Seat</Text>
+        <Text style={[styles.headerCell, { color: t.textSub }]}>Floor</Text>
+        {/* Time column hidden on very small screens */}
+        {SCREEN_W > 340 && <Text style={[styles.headerCellSm, { color: t.textSub }]}>Time</Text>}
       </View>
 
       {loading ? (
@@ -111,18 +119,27 @@ export default function AllBookingsScreen() {
           data={paged}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ItemSeparatorComponent={() => <View style={styles.divider} />}
+          ItemSeparatorComponent={() => <View style={[styles.divider, { backgroundColor: t.divider }]} />}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
       {totalPages > 1 && (
-        <View style={styles.pagination}>
-          <TouchableOpacity onPress={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
-            <Text style={[styles.pageBtn, page === 0 && styles.pageBtnDisabled]}>Prev</Text>
+        <View style={[styles.pagination, { backgroundColor: t.card, borderTopColor: t.divider }]}>
+          <TouchableOpacity
+            style={[styles.pageBtnWrap, page === 0 && styles.pageBtnWrapDisabled]}
+            onPress={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            <Text style={[styles.pageBtn, { color: page === 0 ? t.textTertiary : COLORS.primary }]}>← Prev</Text>
           </TouchableOpacity>
-          <Text style={styles.pageInfo}>{page + 1} / {totalPages}</Text>
-          <TouchableOpacity onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
-            <Text style={[styles.pageBtn, page >= totalPages - 1 && styles.pageBtnDisabled]}>Next</Text>
+          <Text style={[styles.pageInfo, { color: t.textSub }]}>{page + 1} / {totalPages}</Text>
+          <TouchableOpacity
+            style={[styles.pageBtnWrap, page >= totalPages - 1 && styles.pageBtnWrapDisabled]}
+            onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+          >
+            <Text style={[styles.pageBtn, { color: page >= totalPages - 1 ? t.textTertiary : COLORS.primary }]}>Next →</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -131,32 +148,49 @@ export default function AllBookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgLight, padding: 16 },
-  title: { fontSize: 20, fontWeight: '700', color: COLORS.primary, marginBottom: 12 },
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 20, fontWeight: '800', marginBottom: 12, letterSpacing: -0.3 },
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   dateInput: {
-    flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff',
+    flex: 1, borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
   },
-  refreshBtn: { backgroundColor: COLORS.primary, borderRadius: 6, paddingHorizontal: 14, justifyContent: 'center' },
-  refreshText: { color: '#fff', fontWeight: '600' },
-  header: { flexDirection: 'row', backgroundColor: '#f5f5f5', padding: 8, borderRadius: 6, marginBottom: 4 },
-  headerCell: { flex: 1, fontWeight: '700', fontSize: 12, color: '#555' },
-  headerCellSm: { width: 60, fontWeight: '700', fontSize: 12, color: '#555' },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 8, backgroundColor: '#fff', borderRadius: 6 },
-  empCell: { flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refreshBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 10,
+    paddingHorizontal: 16, justifyContent: 'center',
+    minHeight: 44,
+  },
+  refreshText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  header: {
+    flexDirection: 'row', padding: 10, borderRadius: 10, marginBottom: 4,
+  },
+  headerCell: { flex: 1, fontWeight: '700', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' },
+  headerCellSm: { width: 56, fontWeight: '700', fontSize: 11, letterSpacing: 0.5 },
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8,
+  },
+  empCell: { flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
+  empTextWrap: { flex: 1, minWidth: 0 },
   empAvatar: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 34, height: 34, borderRadius: 17, flexShrink: 0,
     backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center',
   },
   empAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   empName: { fontWeight: '600', fontSize: 12 },
-  empId: { fontSize: 11, color: '#888' },
-  cell: { flex: 1, fontSize: 12, color: COLORS.textPrimaryLight },
-  cellSm: { width: 60, fontSize: 11, color: '#888' },
-  divider: { height: 6 },
-  pagination: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 12 },
-  pageBtn: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-  pageBtnDisabled: { color: '#ccc' },
-  pageInfo: { fontSize: 13, color: '#555' },
+  empId: { fontSize: 11 },
+  cell: { flex: 1, fontSize: 12, minWidth: 0 },
+  cellSm: { width: 56, fontSize: 11 },
+  divider: { height: 1 },
+  pagination: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 16, marginTop: 12, paddingTop: 12, borderTopWidth: 1,
+  },
+  pageBtnWrap: {
+    paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8,
+    backgroundColor: COLORS.primaryMuted, minWidth: 72, alignItems: 'center',
+  },
+  pageBtnWrapDisabled: { opacity: 0.4 },
+  pageBtn: { fontWeight: '700', fontSize: 13 },
+  pageInfo: { fontSize: 13, fontWeight: '600' },
 });
