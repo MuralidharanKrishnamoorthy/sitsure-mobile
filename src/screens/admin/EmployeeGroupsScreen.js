@@ -1,39 +1,47 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, {useState, useEffect, useContext} from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, Alert, Image,
 } from 'react-native';
-import { UserContext } from '../../context/UserContext';
-import { getEmployeeGroups, upsertEmployeeGroup } from '../../services/employeeGroupService';
-import { getGraphUserProfile } from '../../services/graphService';
-import { COLORS } from '../../theme/colors';
+import Animated, {FadeInDown} from 'react-native-reanimated';
+import {useTheme} from '../../context/ThemeContext';
+import {UserContext} from '../../context/UserContext';
+import {getEmployeeGroups, upsertEmployeeGroup} from '../../services/employeeGroupService';
+import {getGraphUserProfile} from '../../services/graphService';
+import {COLORS} from '../../theme/colors';
 import Loader from '../../components/Loader';
 
 const GROUP_OPTIONS = ['SDOS', 'SDL', 'QA', 'VENZO'];
 const GROUP_COLORS = COLORS.groupColors;
 
 function normalizeGroups(groups) {
-  return [...new Set(groups.map((g) => g.trim().toUpperCase()).filter(Boolean))];
+  return [...new Set(groups.map(g => g.trim().toUpperCase()).filter(Boolean))];
 }
 
 function getPrimaryPalette(groups) {
   for (const g of groups) {
     if (GROUP_COLORS[g.toUpperCase()]) return GROUP_COLORS[g.toUpperCase()];
   }
-  return { bg: '#f5f5f5', text: '#555' };
+  return {bg: COLORS.primaryMuted, text: COLORS.primary};
 }
 
-function GroupChip({ group }) {
-  const cfg = GROUP_COLORS[group.toUpperCase()] || { bg: '#eee', text: '#333' };
+function GroupChip({group}) {
+  const cfg = GROUP_COLORS[group.toUpperCase()] || {bg: COLORS.primaryMuted, text: COLORS.primary};
   return (
-    <View style={[styles.chip, { backgroundColor: cfg.bg }]}>
-      <Text style={[styles.chipText, { color: cfg.text }]}>{group}</Text>
+    <View style={[chipStyles.wrap, {backgroundColor: cfg.bg}]}>
+      <Text style={[chipStyles.text, {color: cfg.text}]}>{group}</Text>
     </View>
   );
 }
 
+const chipStyles = StyleSheet.create({
+  wrap: {borderRadius: 8, paddingVertical: 3, paddingHorizontal: 9},
+  text: {fontSize: 11, fontWeight: '700'},
+});
+
 export default function EmployeeGroupsScreen() {
-  const { accessToken } = useContext(UserContext);
+  const {accessToken} = useContext(UserContext);
+  const {t} = useTheme();
   const [groups, setGroups] = useState([]);
   const [photos, setPhotos] = useState({});
   const [loading, setLoading] = useState(false);
@@ -48,10 +56,10 @@ export default function EmployeeGroupsScreen() {
       if (accessToken) {
         const photoMap = {};
         await Promise.all(
-          data.map(async (entry) => {
+          data.map(async entry => {
             const profile = await getGraphUserProfile(entry.email, accessToken);
             if (profile?.photoUrl) photoMap[entry.email] = profile.photoUrl;
-          })
+          }),
         );
         setPhotos(photoMap);
       }
@@ -64,10 +72,8 @@ export default function EmployeeGroupsScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const toggleGroup = (g) => {
-    setSelectedGroups((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    );
+  const toggleGroup = g => {
+    setSelectedGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   };
 
   const handleAdd = async () => {
@@ -80,7 +86,7 @@ export default function EmployeeGroupsScreen() {
       return;
     }
     try {
-      await upsertEmployeeGroup({ email: email.trim().toLowerCase(), groups: normalizeGroups(selectedGroups) });
+      await upsertEmployeeGroup({email: email.trim().toLowerCase(), groups: normalizeGroups(selectedGroups)});
       setEmail('');
       setSelectedGroups([]);
       await load();
@@ -89,73 +95,95 @@ export default function EmployeeGroupsScreen() {
     }
   };
 
-  const renderCard = ({ item }) => {
+  const renderCard = ({item, index}) => {
     const palette = getPrimaryPalette(item.groups || []);
     const photoUrl = photos[item.email];
     const initial = item.email[0].toUpperCase();
 
     return (
-      <View style={[styles.card, { borderLeftColor: palette.text, backgroundColor: palette.bg }]}>
-        <View style={styles.cardHeader}>
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: palette.text }]}>
-              <Text style={styles.avatarInitial}>{initial}</Text>
+      <Animated.View
+        entering={FadeInDown.delay(index * 35).duration(350)}
+        style={[styles.card, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+        {/* Left accent stripe using group color */}
+        <View style={[styles.cardAccent, {backgroundColor: palette.text}]} />
+        <View style={styles.cardBody}>
+          <View style={styles.cardHeader}>
+            {photoUrl ? (
+              <Image source={{uri: photoUrl}} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatarFallback, {backgroundColor: `${palette.text}20`}]}>
+                <Text style={[styles.avatarInitial, {color: palette.text}]}>{initial}</Text>
+              </View>
+            )}
+            <View style={styles.cardInfo}>
+              <Text style={[styles.cardEmail, {color: t.text}]} numberOfLines={1}>{item.email}</Text>
+              <View style={[styles.bookingBadge, {backgroundColor: t.chipBg}]}>
+                <Text style={[styles.cardCount, {color: t.textSub}]}>{item.bookingCount ?? 0} bookings</Text>
+              </View>
             </View>
-          )}
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardEmail}>{item.email}</Text>
-            <Text style={styles.cardCount}>{item.bookingCount ?? 0} bookings</Text>
+          </View>
+          <View style={styles.groupsRow}>
+            {(item.groups || []).map(g => <GroupChip key={g} group={g} />)}
           </View>
         </View>
-        <View style={styles.groupsRow}>
-          {(item.groups || []).map((g) => <GroupChip key={g} group={g} />)}
-        </View>
-      </View>
+      </Animated.View>
     );
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Employee Groups</Text>
+    <View style={[styles.container, {backgroundColor: t.bg}]}>
 
-      <View style={styles.addCard}>
+      {/* Add form */}
+      <View style={[styles.addCard, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+        <Text style={[styles.addTitle, {color: t.text}]}>Assign Employee Group</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, {backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text}]}
           placeholder="user@venzotechnologies.com"
+          placeholderTextColor={t.textTertiary}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
         />
         <View style={styles.groupPicker}>
-          {GROUP_OPTIONS.map((g) => (
+          {GROUP_OPTIONS.map(g => (
             <TouchableOpacity
               key={g}
-              style={[styles.groupOption, selectedGroups.includes(g) && styles.groupOptionActive]}
-              onPress={() => toggleGroup(g)}
-            >
-              <Text style={[styles.groupOptionText, selectedGroups.includes(g) && styles.groupOptionTextActive]}>
+              style={[
+                styles.groupOption,
+                {borderColor: t.chipBorder},
+                selectedGroups.includes(g) && {backgroundColor: COLORS.primary, borderColor: COLORS.primary},
+              ]}
+              onPress={() => toggleGroup(g)}>
+              <Text style={[
+                styles.groupOptionText,
+                {color: t.textSub},
+                selectedGroups.includes(g) && {color: '#fff'},
+              ]}>
                 {g}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-          <Text style={styles.addBtnText}>Add</Text>
+        <TouchableOpacity
+          style={[styles.addBtn, {backgroundColor: COLORS.primary}]}
+          onPress={handleAdd}>
+          <Text style={styles.addBtnText}>Save Assignment</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <Loader color={COLORS.primary} />
+        <View style={styles.loaderWrap}>
+          <Loader color={COLORS.primary} size={28} />
+        </View>
       ) : (
         <FlatList
           data={groups}
-          keyExtractor={(item) => item.email}
+          keyExtractor={item => item.email}
           renderItem={renderCard}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          ItemSeparatorComponent={() => <View style={{height: 10}} />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </View>
@@ -163,35 +191,53 @@ export default function EmployeeGroupsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgLight, padding: 16 },
-  title: { fontSize: 20, fontWeight: '700', color: COLORS.primary, marginBottom: 12 },
-  addCard: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16 },
+  container: {flex: 1, padding: 16},
+  loaderWrap: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  listContent: {paddingBottom: 32},
+
+  addCard: {
+    borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  addTitle: {fontWeight: '800', fontSize: 15, marginBottom: 12, letterSpacing: -0.2},
   input: {
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8, backgroundColor: '#fff',
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 14, marginBottom: 12,
   },
-  groupPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  groupPicker: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12},
   groupOption: {
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 16,
-    paddingVertical: 4, paddingHorizontal: 12,
-  },
-  groupOptionActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  groupOptionText: { color: '#555', fontWeight: '600', fontSize: 13 },
-  groupOptionTextActive: { color: '#fff' },
-  addBtn: { backgroundColor: COLORS.primary, borderRadius: 6, padding: 10, alignItems: 'center' },
-  addBtnText: { color: '#fff', fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 8, padding: 12, borderLeftWidth: 4 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  avatarFallback: {
-    width: 40, height: 40, borderRadius: 20, marginRight: 10,
+    borderWidth: 1.5, borderRadius: 22,
+    paddingVertical: 8, paddingHorizontal: 16,
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitial: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cardInfo: { flex: 1 },
-  cardEmail: { fontWeight: '600', fontSize: 13 },
-  cardCount: { fontSize: 12, color: '#666', marginTop: 2 },
-  groupsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { borderRadius: 10, paddingVertical: 2, paddingHorizontal: 8 },
-  chipText: { fontSize: 11, fontWeight: '600' },
+  groupOptionText: {fontWeight: '700', fontSize: 13},
+  addBtn: {
+    borderRadius: 12, padding: 13, alignItems: 'center',
+    shadowColor: COLORS.primary, shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
+  },
+  addBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
+
+  card: {
+    borderRadius: 14, borderWidth: 1,
+    flexDirection: 'row', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  cardAccent: {width: 4},
+  cardBody: {flex: 1, padding: 14},
+  cardHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 12},
+  avatar: {width: 42, height: 42, borderRadius: 21, flexShrink: 0},
+  avatarFallback: {
+    width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarInitial: {fontWeight: '800', fontSize: 16},
+  cardInfo: {flex: 1, minWidth: 0},
+  cardEmail: {fontWeight: '600', fontSize: 13, marginBottom: 4},
+  bookingBadge: {alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2},
+  cardCount: {fontSize: 11, fontWeight: '600'},
+  groupsRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 6},
 });

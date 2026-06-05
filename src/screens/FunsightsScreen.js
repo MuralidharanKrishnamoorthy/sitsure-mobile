@@ -1,25 +1,67 @@
-import React, { useState, useEffect, useContext } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, Image, Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, {useState, useEffect, useContext} from 'react';
+import {View, Text, StyleSheet, ScrollView, Image, Dimensions} from 'react-native';
+import Animated, {
+  FadeInDown, useSharedValue, useAnimatedStyle, withTiming, Easing,
+} from 'react-native-reanimated';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-import { UserContext } from '../context/UserContext';
-import { getBookingAggregates } from '../services/bookingService';
-import { getGraphUserProfile } from '../services/graphService';
-import { formatDate } from '../utils/dateUtils';
-import { COLORS } from '../theme/colors';
-import { useTheme } from '../context/ThemeContext';
+const {width: SCREEN_W} = Dimensions.get('window');
+import {UserContext} from '../context/UserContext';
+import {getBookingAggregates} from '../services/bookingService';
+import {getGraphUserProfile} from '../services/graphService';
+import {formatDate} from '../utils/dateUtils';
+import {COLORS} from '../theme/colors';
+import {useTheme} from '../context/ThemeContext';
 import Loader from '../components/Loader';
 
 const CHART_COLORS = COLORS.chartColors;
 
+// ── Animated progress bar ─────────────────────────────────────────────────────
+
+function ProgressBar({pct, color, delay = 0}) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withTiming(pct, {duration: 700 + delay, easing: Easing.out(Easing.cubic)});
+  }, [pct]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%`,
+  }));
+
+  return (
+    <View style={pbStyles.track}>
+      <Animated.View style={[pbStyles.fill, {backgroundColor: color}, barStyle]} />
+    </View>
+  );
+}
+
+const pbStyles = StyleSheet.create({
+  track: {height: 7, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 4, overflow: 'hidden', flex: 1},
+  fill: {height: 7, borderRadius: 4},
+});
+
+// ── Rank badge ────────────────────────────────────────────────────────────────
+
+function RankBadge({rank}) {
+  const colors = ['#FFD700', '#C0C0C0', '#CD7F32', COLORS.primaryMuted, COLORS.primaryMuted];
+  const textColors = ['#7A5900', '#555', '#7A3B00', COLORS.primary, COLORS.primary];
+  return (
+    <View style={[rankStyles.badge, {backgroundColor: colors[rank] || COLORS.primaryMuted}]}>
+      <Text style={[rankStyles.text, {color: textColors[rank] || COLORS.primary}]}>{rank + 1}</Text>
+    </View>
+  );
+}
+
+const rankStyles = StyleSheet.create({
+  badge: {width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0},
+  text: {fontWeight: '900', fontSize: 12},
+});
+
 export default function FunsightsScreen() {
-  const { accessToken } = useContext(UserContext);
-  const { t } = useTheme();
+  const {accessToken} = useContext(UserContext);
+  const {t} = useTheme();
   const insets = useSafeAreaInsets();
-  // Stack columns on very small screens
   const useColumns = SCREEN_W >= 360;
   const [loading, setLoading] = useState(false);
   const [heroes, setHeroes] = useState([]);
@@ -32,9 +74,8 @@ export default function FunsightsScreen() {
       try {
         const all = await getBookingAggregates();
 
-        // Top 5 seat heroes
         const byUser = {};
-        all.forEach((b) => {
+        all.forEach(b => {
           if (!b.user_email) return;
           byUser[b.user_email] = (byUser[b.user_email] || 0) + 1;
         });
@@ -43,26 +84,24 @@ export default function FunsightsScreen() {
         const heroData = await Promise.all(
           sortedUsers.map(async ([email, count]) => {
             const profile = accessToken ? await getGraphUserProfile(email, accessToken) : null;
-            return { email, count, profile };
-          })
+            return {email, count, profile};
+          }),
         );
         setHeroes(heroData);
 
-        // Top 5 popular days
         const byDate = {};
-        all.forEach((b) => {
+        all.forEach(b => {
           if (!b.date) return;
           byDate[b.date] = (byDate[b.date] || 0) + 1;
         });
         const sortedDates = Object.entries(byDate).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        setPopularDays(sortedDates.map(([date, count]) => ({ date, count })));
+        setPopularDays(sortedDates.map(([date, count]) => ({date, count})));
 
-        // Top 5 favourite seats
         const bySeat = {};
-        all.forEach((b) => {
+        all.forEach(b => {
           if (!b.seat?.id) return;
           const key = b.seat.id;
-          if (!bySeat[key]) bySeat[key] = { seat: b.seat, count: 0 };
+          if (!bySeat[key]) bySeat[key] = {seat: b.seat, count: 0};
           bySeat[key].count += 1;
         });
         const sortedSeats = Object.values(bySeat).sort((a, b) => b.count - a.count).slice(0, 5);
@@ -79,113 +118,168 @@ export default function FunsightsScreen() {
   const maxHeroCount = heroes[0]?.count || 1;
   const maxSeatCount = favSeats[0]?.count || 1;
 
-  if (loading) return <Loader color={COLORS.primary} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />;
+  if (loading) {
+    return (
+      <View style={[styles.loadWrap, {backgroundColor: t.bg}]}>
+        <Loader color={COLORS.primary} size={28} style={{flex: 1, justifyContent: 'center', alignItems: 'center'}} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: t.bg }]}
-      contentContainerStyle={[styles.content, { paddingTop: Math.max(16, insets.top + 8) }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: t.text }]}>Fun Insights</Text>
+      style={[styles.container, {backgroundColor: t.bg}]}
+      contentContainerStyle={[styles.content, {paddingTop: Math.max(16, insets.top + 8)}]}
+      showsVerticalScrollIndicator={false}>
+
+      {/* Header */}
+      <Animated.View entering={FadeInDown.duration(350)} style={styles.headerBlock}>
+        <Text style={[styles.title, {color: t.text}]}>Fun Insights</Text>
+        <Text style={[styles.subtitle, {color: t.textSub}]}>Office activity at a glance</Text>
+      </Animated.View>
 
       {/* Seat Heroes */}
-      <Text style={[styles.section, { color: t.text }]}>Top 5 Seat Heroes</Text>
-      {heroes.map((hero, index) => (
-        <View key={hero.email} style={[styles.heroRow, { backgroundColor: `${CHART_COLORS[index]}20` }]}>
-          <View style={styles.heroAvatar}>
-            {hero.profile?.photoUrl ? (
-              <Image source={{ uri: hero.profile.photoUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarFallback, { backgroundColor: CHART_COLORS[index] }]}>
-                <Text style={styles.avatarInitial}>
-                  {(hero.profile?.displayName || hero.email)[0].toUpperCase()}
-                </Text>
+      <Animated.View entering={FadeInDown.delay(60).duration(400)}>
+        <Text style={[styles.section, {color: t.text}]}>Seat Heroes</Text>
+        <View style={[styles.sectionCard, {backgroundColor: t.card}]}>
+          {heroes.map((hero, index) => (
+            <View key={hero.email} style={[
+              styles.heroRow,
+              {borderBottomColor: t.divider},
+              index < heroes.length - 1 && {borderBottomWidth: 1},
+            ]}>
+              <RankBadge rank={index} />
+              <View style={styles.heroAvatar}>
+                {hero.profile?.photoUrl ? (
+                  <Image source={{uri: hero.profile.photoUrl}} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatarFallback, {backgroundColor: `${CHART_COLORS[index]}25`}]}>
+                    <Text style={[styles.avatarInitial, {color: CHART_COLORS[index]}]}>
+                      {(hero.profile?.displayName || hero.email)[0].toUpperCase()}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-          <View style={styles.heroInfo}>
-            <Text style={[styles.heroName, { color: t.text }]}>{hero.profile?.displayName || hero.email}</Text>
-            <Text style={[styles.heroEmail, { color: t.textSub }]}>{hero.email}</Text>
-            <View style={[styles.progressBarBg, { backgroundColor: t.divider }]}>
-              <View
-                style={[styles.progressBarFill, {
-                  width: `${(hero.count / maxHeroCount) * 100}%`,
-                  backgroundColor: CHART_COLORS[index],
-                }]}
-              />
+              <View style={styles.heroInfo}>
+                <Text style={[styles.heroName, {color: t.text}]} numberOfLines={1}>
+                  {hero.profile?.displayName || hero.email}
+                </Text>
+                <ProgressBar pct={(hero.count / maxHeroCount) * 100} color={CHART_COLORS[index]} delay={index * 80} />
+              </View>
+              <Text style={[styles.heroCount, {color: CHART_COLORS[index]}]}>{hero.count}</Text>
             </View>
-          </View>
-          <Text style={[styles.heroCount, { color: t.text }]}>{hero.count}</Text>
+          ))}
         </View>
-      ))}
+      </Animated.View>
 
-      <View style={[styles.twoCol, !useColumns && styles.twoColStack]}>
+      {/* Two column section */}
+      <Animated.View
+        entering={FadeInDown.delay(140).duration(400)}
+        style={[styles.twoCol, !useColumns && styles.twoColStack]}>
+
         {/* Popular Days */}
-        <View style={[styles.colCard, { backgroundColor: t.card }, !useColumns && styles.colCardFull]}>
-          <Text style={[styles.section, { color: t.text }]}>Popular Days</Text>
-          {popularDays.map(({ date, count }) => (
-            <View key={date} style={[styles.popularDayRow, { backgroundColor: t.chipBg }]}>
-              <Text style={[styles.popularDayDate, { color: t.text }]}>{formatDate(date)}</Text>
-              <Text style={[styles.popularDayCount, { color: t.textSub }]}>{count} bookings</Text>
+        <View style={[styles.colCard, {backgroundColor: t.card}, !useColumns && styles.colCardFull]}>
+          <Text style={[styles.colTitle, {color: t.text}]}>Popular Days</Text>
+          {popularDays.map(({date, count}, i) => (
+            <View key={date} style={[styles.popularDayRow, {backgroundColor: t.chipBg}]}>
+              <Text style={[styles.popularDayDate, {color: t.text}]}>{formatDate(date)}</Text>
+              <View style={[styles.popularDayBadge, {backgroundColor: COLORS.primaryMuted}]}>
+                <Text style={[styles.popularDayCount, {color: COLORS.primary}]}>{count}</Text>
+              </View>
             </View>
           ))}
         </View>
 
         {/* Favourite Seats */}
-        <View style={[styles.colCard, { backgroundColor: t.card }, !useColumns && styles.colCardFull]}>
-          <Text style={[styles.section, { color: t.text }]}>Favourite Seats</Text>
-          {favSeats.map(({ seat, count }, index) => (
+        <View style={[styles.colCard, {backgroundColor: t.card}, !useColumns && styles.colCardFull]}>
+          <Text style={[styles.colTitle, {color: t.text}]}>Top Seats</Text>
+          {favSeats.map(({seat, count}, index) => (
             <View key={seat.id} style={styles.favSeatRow}>
-              <Text style={[styles.favSeatLabel, { color: t.text }]}>
-                {seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label}
-              </Text>
-              <View style={[styles.progressBarBg, { backgroundColor: t.divider }]}>
-                <View
-                  style={[styles.progressBarFill, {
-                    width: `${(count / maxSeatCount) * 100}%`,
-                    backgroundColor: CHART_COLORS[(index + 2) % CHART_COLORS.length],
-                  }]}
-                />
+              <View style={styles.favSeatTop}>
+                <Text style={[styles.favSeatLabel, {color: t.text}]}>
+                  {seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label}
+                </Text>
+                <Text style={[styles.favSeatCount, {color: t.textTertiary}]}>{count}×</Text>
               </View>
-              <Text style={[styles.favSeatCount, { color: t.textSub }]}>{count} bookings</Text>
+              <ProgressBar
+                pct={(count / maxSeatCount) * 100}
+                color={CHART_COLORS[(index + 2) % CHART_COLORS.length]}
+                delay={index * 60}
+              />
             </View>
           ))}
         </View>
-      </View>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 32 },
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.primary, marginBottom: 16, letterSpacing: -0.5 },
-  section: { fontSize: 15, fontWeight: '700', marginBottom: 10, marginTop: 4, letterSpacing: -0.2 },
+  container: {flex: 1},
+  content: {padding: 16, paddingBottom: 40},
+  loadWrap: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+
+  headerBlock: {marginBottom: 22},
+  title: {fontSize: 28, fontWeight: '900', letterSpacing: -0.8},
+  subtitle: {fontSize: 13, fontWeight: '500', marginTop: 4},
+
+  section: {fontSize: 13, fontWeight: '700', marginBottom: 10, letterSpacing: 0.6, textTransform: 'uppercase'},
+
+  sectionCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   heroRow: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 8,
-    padding: 10, marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    gap: 0,
   },
-  heroAvatar: { marginRight: 10 },
-  avatar: { width: 44, height: 44, borderRadius: 22 },
-  avatarFallback: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  heroInfo: { flex: 1 },
-  heroName: { fontWeight: '600', fontSize: 14, color: '#212121' },
-  heroEmail: { fontSize: 12, color: '#555', marginBottom: 4 },
-  heroCount: { fontWeight: '700', fontSize: 17, marginLeft: 8, color: '#212121' },
-  progressBarBg: { height: 7, backgroundColor: '#e0e0e0', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: 7, borderRadius: 4 },
-  twoCol: { flexDirection: 'row', gap: 10 },
-  twoColStack: { flexDirection: 'column' },
-  colCard: { flex: 1, borderRadius: 12, padding: 14 },
-  colCardFull: { flex: 0, width: '100%' },
+  heroAvatar: {marginRight: 10},
+  avatar: {width: 38, height: 38, borderRadius: 19},
+  avatarFallback: {width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center'},
+  avatarInitial: {fontWeight: '800', fontSize: 15},
+  heroInfo: {flex: 1, gap: 6},
+  heroName: {fontWeight: '600', fontSize: 13},
+  heroCount: {fontWeight: '900', fontSize: 16, marginLeft: 10, minWidth: 28, textAlign: 'right'},
+
+  twoCol: {flexDirection: 'row', gap: 12},
+  twoColStack: {flexDirection: 'column'},
+  colCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  colCardFull: {flex: 0, width: '100%'},
+  colTitle: {fontSize: 13, fontWeight: '700', letterSpacing: 0.4, marginBottom: 4, textTransform: 'uppercase'},
+
   popularDayRow: {
-    backgroundColor: 'rgba(25,118,210,0.08)', borderRadius: 6, padding: 9, marginBottom: 6,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  popularDayDate: { fontSize: 13, fontWeight: '600', color: '#212121' },
-  popularDayCount: { fontSize: 12, color: '#555' },
-  favSeatRow: { marginBottom: 10 },
-  favSeatLabel: { fontWeight: '600', fontSize: 13, marginBottom: 4, color: '#212121' },
-  favSeatCount: { fontSize: 12, color: '#555', marginTop: 2 },
+  popularDayDate: {fontSize: 12, fontWeight: '600'},
+  popularDayBadge: {borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2},
+  popularDayCount: {fontSize: 11, fontWeight: '800'},
+
+  favSeatRow: {gap: 5},
+  favSeatTop: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  favSeatLabel: {fontWeight: '600', fontSize: 12},
+  favSeatCount: {fontSize: 11, fontWeight: '600'},
 });

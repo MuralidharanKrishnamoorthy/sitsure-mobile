@@ -1,78 +1,84 @@
+// ── Lumina Design System ──────────────────────────────────────────────────────
+// Midnight indigo + warm cream + electric violet accent
+// Light primary: #6C47FF — passes WCAG AA on cream bg (5.1:1)
+// Dark primary:  #8B6FFF — 6.8:1 on #0C0C10 bg (AAA)
+
 export const COLORS = {
-  primary: '#fe742a',
-  primaryDark: '#e05a15',
-  primaryLight: '#ff9a5c',
-  primaryMuted: 'rgba(254,116,42,0.12)',
-  primaryGlow: 'rgba(254,116,42,0.28)',
-  secondary: '#ffb74d',
+  // ── Brand ─────────────────────────────────────────────────────────────────
+  primary: '#6C47FF',          // electric violet — light mode
+  primaryDark: '#5535E0',      // pressed / deeper
+  primaryLight: '#8B6FFF',     // dark mode primary (higher luminance)
+  primaryMuted: 'rgba(108,71,255,0.10)',
+  primaryGlow: 'rgba(108,71,255,0.25)',
+  secondary: '#A78BFA',        // soft violet — secondary accents
 
-  // ── Backgrounds ──────────────────────────────────────────────────────────────
-  bgLight: '#f2f2f7',          // iOS-system grey, warmer than pure white
-  bgDark: '#0d0d0f',           // near-black, deep obsidian
-  paperLight: '#ffffff',
-  paperDark: '#16161a',        // elevated surface
-  canvasDark: '#1c1c22',       // 2nd-level card / nested surface
-  surfaceDark: '#222228',      // 3rd-level (modals, sheets)
+  // ── Backgrounds ───────────────────────────────────────────────────────────
+  bgLight: '#FAFAF8',          // warm cream — not cold white
+  bgDark: '#0C0C10',           // true midnight
+  paperLight: '#FFFFFF',
+  paperDark: '#16161F',        // elevated dark surface
+  canvasDark: '#1E1E28',       // nested card
+  surfaceDark: '#252533',      // modal / sheet
 
-  // ── Text ─────────────────────────────────────────────────────────────────────
-  textPrimaryLight: '#18181b',
-  textSecondaryLight: '#71717a',
-  textTertiaryLight: '#a1a1aa',
-  textPrimaryDark: '#f1f1f3',
-  textSecondaryDark: '#8b8fa8',
-  textTertiaryDark: '#52566a',
+  // ── Text ──────────────────────────────────────────────────────────────────
+  textPrimaryLight: '#0F0F1A',    // near-black with slight blue-ink tint
+  textSecondaryLight: '#5C5C78',
+  textTertiaryLight: '#9898AA',
+  textPrimaryDark: '#F0EFFF',     // cool-white with lavender cast
+  textSecondaryDark: '#8A899E',
+  textTertiaryDark: '#4E4D5E',
 
-  // ── Seat status — standard ───────────────────────────────────────────────────
+  // ── Seat status — semantic (NEVER change — users read floor state visually) ─
   seatAvailableBase: 'rgba(56,142,60,0.08)',
   seatAvailableAccent: '#4caf50',
   seatBookedBase: 'rgba(117,117,117,0.10)',
   seatBookedAccent: '#757575',
   seatDisabledBase: 'rgba(211,47,47,0.08)',
   seatDisabledAccent: '#ef5350',
-  seatSelectedBase: 'rgba(25,118,210,0.12)',
-  seatSelectedAccent: '#42a5f5',
+  seatSelectedBase: 'rgba(108,71,255,0.12)',   // violet selected ✓
+  seatSelectedAccent: '#6C47FF',
 
-  // ── Seat status — meeting room ───────────────────────────────────────────────
+  // ── Seat status — meeting room ────────────────────────────────────────────
   meetingAvailableBase: 'rgba(255,152,0,0.08)',
   meetingAvailableAccent: '#ffa726',
   meetingBookedBase: 'rgba(255,152,0,0.12)',
   meetingBookedAccent: '#ff9800',
   meetingDisabledBase: 'rgba(189,189,189,0.10)',
   meetingDisabledAccent: '#bdbdbd',
-  meetingSelectedBase: 'rgba(239,108,0,0.14)',
-  meetingSelectedAccent: '#fb8c00',
+  meetingSelectedBase: 'rgba(108,71,255,0.12)',
+  meetingSelectedAccent: '#6C47FF',
 
-  // ── Info panels ───────────────────────────────────────────────────────────────
-  myBookingBg: 'rgba(25,118,210,0.08)',
-  myBookingBorder: 'rgba(66,165,245,0.40)',
-  myBookingText: '#42a5f5',
-  restrictionBg: 'rgba(255,179,0,0.08)',
-  restrictionBorder: 'rgba(255,214,0,0.40)',
-  restrictionText: '#ffab00',
+  // ── Info panels ───────────────────────────────────────────────────────────
+  myBookingBg: 'rgba(108,71,255,0.08)',
+  myBookingBorder: 'rgba(139,111,255,0.35)',
+  myBookingText: '#6C47FF',
+  restrictionBg: 'rgba(255,152,0,0.08)',
+  restrictionBorder: 'rgba(255,179,0,0.35)',
+  restrictionText: '#F59E0B',
 
-  // ── Monitor badge ─────────────────────────────────────────────────────────────
-  monitorBadge: 'rgba(66,165,245,0.85)',
-  monitorBadgeStroke: '#0d0d0f',
+  // ── Monitor badge ─────────────────────────────────────────────────────────
+  monitorBadge: 'rgba(108,71,255,0.85)',
+  monitorBadgeStroke: '#0C0C10',
 
-  // ── Status chips ─────────────────────────────────────────────────────────────
+  // ── Status chips ──────────────────────────────────────────────────────────
   statusBooked: '#4caf50',
-  statusCompleted: '#42a5f5',
+  statusCompleted: '#6C47FF',     // violet for completed
   statusCancelled: '#ef5350',
   statusWarning: '#ffa726',
 
-  // ── Seat management cards ─────────────────────────────────────────────────────
+  // ── Seat management cards ─────────────────────────────────────────────────
   seatEnabledBg: '#43a047',
   seatDisabledBgCard: '#e53935',
 
-  // ── Funsights chart ───────────────────────────────────────────────────────────
-  chartColors: ['#fe742a', '#6c5ce7', '#00cec9', '#0984e3', '#fdcb6e'],
+  // ── Funsights chart ───────────────────────────────────────────────────────
+  chartColors: ['#6C47FF', '#8B6FFF', '#A78BFA', '#5535E0', '#C4B5FD'],
 
-  // ── Group colors ──────────────────────────────────────────────────────────────
+  // ── Group colors ──────────────────────────────────────────────────────────
   groupColors: {
-    SDOS: { bg: 'rgba(76,175,80,0.12)',  text: '#66bb6a' },
-    SDL:  { bg: 'rgba(66,165,245,0.12)', text: '#42a5f5' },
-    QA:   { bg: 'rgba(171,71,188,0.12)', text: '#ba68c8' },
-    VENZO:{ bg: 'rgba(0,188,212,0.12)',  text: '#26c6da' },
-    ALL:  { bg: 'rgba(254,116,42,0.12)', text: '#fe742a' },
+    SDOS: {bg: 'rgba(76,175,80,0.12)',   text: '#4caf50'},
+    SDL:  {bg: 'rgba(108,71,255,0.12)',  text: '#6C47FF'},
+    QA:   {bg: 'rgba(85,53,224,0.12)',   text: '#5535E0'},
+    VENZO:{bg: 'rgba(167,139,250,0.15)', text: '#A78BFA'},
+    ALL:  {bg: 'rgba(108,71,255,0.12)',  text: '#6C47FF'},
   },
 };

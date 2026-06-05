@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, Alert, ScrollView,
 } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
-import { getAnchorDays, upsertAnchorDay } from '../../services/bookingService';
-import { getTodayInKolkata, formatDate } from '../../utils/dateUtils';
-import { COLORS } from '../../theme/colors';
+import Animated, {FadeInDown} from 'react-native-reanimated';
+import {useTheme} from '../../context/ThemeContext';
+import {getAnchorDays, upsertAnchorDay} from '../../services/bookingService';
+import {getTodayInKolkata, formatDate} from '../../utils/dateUtils';
+import {COLORS} from '../../theme/colors';
 import Loader from '../../components/Loader';
 
 const GROUP_OPTIONS = ['ALL', 'SDOS', 'SDL', 'QA'];
 const GROUP_COLORS = COLORS.groupColors;
 
 function normalizeGroups(groups) {
-  const upper = groups.map((g) => g.trim().toUpperCase()).filter(Boolean);
+  const upper = groups.map(g => g.trim().toUpperCase()).filter(Boolean);
   const expanded = [];
-  upper.forEach((g) => {
+  upper.forEach(g => {
     if (g === 'ALL') {
       expanded.push('SDOS', 'SDL', 'QA');
     } else {
@@ -25,22 +26,26 @@ function normalizeGroups(groups) {
   return [...new Set(expanded)];
 }
 
-function GroupChip({ group }) {
-  const cfg = GROUP_COLORS[group] || { bg: '#eee', text: '#333' };
+function GroupChip({group}) {
+  const cfg = GROUP_COLORS[group] || {bg: COLORS.primaryMuted, text: COLORS.primary};
   return (
-    <View style={[styles.chip, { backgroundColor: cfg.bg }]}>
-      <Text style={[styles.chipText, { color: cfg.text }]}>{group}</Text>
+    <View style={[chipStyles.wrap, {backgroundColor: cfg.bg}]}>
+      <Text style={[chipStyles.text, {color: cfg.text}]}>{group}</Text>
     </View>
   );
 }
 
+const chipStyles = StyleSheet.create({
+  wrap: {borderRadius: 8, paddingVertical: 3, paddingHorizontal: 9},
+  text: {fontSize: 11, fontWeight: '700'},
+});
+
 export default function AnchorDaysScreen() {
-  const { t } = useTheme();
+  const {t} = useTheme();
   const [anchorDays, setAnchorDays] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [selectedGroups, setSelectedGroups] = useState([]);
-  const today = getTodayInKolkata();
 
   const load = async () => {
     setLoading(true);
@@ -56,10 +61,8 @@ export default function AnchorDaysScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const toggleGroup = (g) => {
-    setSelectedGroups((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    );
+  const toggleGroup = g => {
+    setSelectedGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   };
 
   const handleAdd = async () => {
@@ -72,7 +75,7 @@ export default function AnchorDaysScreen() {
       return;
     }
     try {
-      await upsertAnchorDay({ date: newDate, groups: normalizeGroups(selectedGroups) });
+      await upsertAnchorDay({date: newDate, groups: normalizeGroups(selectedGroups)});
       setNewDate('');
       setSelectedGroups([]);
       await load();
@@ -81,74 +84,99 @@ export default function AnchorDaysScreen() {
     }
   };
 
-  const upcoming = anchorDays.filter((d) => d.upcoming);
-  const past = anchorDays.filter((d) => !d.upcoming).reverse();
+  const upcoming = anchorDays.filter(d => d.upcoming);
+  const past = anchorDays.filter(d => !d.upcoming).reverse();
 
-  const renderRow = ({ item }) => (
-    <View style={[styles.row, { borderBottomColor: t.divider }]}>
-      <Text style={[styles.rowDate, { color: t.text }]}>{formatDate(item.date)}</Text>
-      <View style={styles.groupsRow}>
-        {(item.groups || []).map((g) => <GroupChip key={g} group={g} />)}
+  const renderRow = ({item, index}) => (
+    <Animated.View
+      entering={FadeInDown.delay(index * 30).duration(300)}
+      style={[styles.row, {borderBottomColor: t.divider}]}>
+      <View style={styles.rowDateWrap}>
+        <Text style={[styles.rowDate, {color: t.text}]}>{formatDate(item.date)}</Text>
       </View>
-      <Text style={[styles.rowCount, { color: COLORS.primary }]}>{item.bookingCount ?? 0}</Text>
-    </View>
+      <View style={styles.groupsRow}>
+        {(item.groups || []).map(g => <GroupChip key={g} group={g} />)}
+      </View>
+      <View style={[styles.countBadge, {backgroundColor: COLORS.primaryMuted}]}>
+        <Text style={[styles.rowCount, {color: COLORS.primary}]}>{item.bookingCount ?? 0}</Text>
+      </View>
+    </Animated.View>
   );
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: t.bg }]}
+      style={[styles.container, {backgroundColor: t.bg}]}
       contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: COLORS.primary }]}>Anchor Days</Text>
+      showsVerticalScrollIndicator={false}>
 
       {/* Add form */}
-      <View style={[styles.addCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Text style={[styles.addTitle, { color: t.text }]}>Add Anchor Day</Text>
+      <View style={[styles.addCard, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+        <Text style={[styles.addTitle, {color: t.text}]}>Add Anchor Day</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text }]}
+          style={[styles.input, {backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text}]}
           placeholder="Date (YYYY-MM-DD)"
           placeholderTextColor={t.textTertiary}
           value={newDate}
           onChangeText={setNewDate}
         />
         <View style={styles.groupPicker}>
-          {GROUP_OPTIONS.map((g) => (
+          {GROUP_OPTIONS.map(g => (
             <TouchableOpacity
               key={g}
-              style={[styles.groupOption, { borderColor: t.chipBorder }, selectedGroups.includes(g) && styles.groupOptionActive]}
-              onPress={() => toggleGroup(g)}
-            >
-              <Text style={[styles.groupOptionText, { color: t.textSub }, selectedGroups.includes(g) && styles.groupOptionTextActive]}>
+              style={[
+                styles.groupOption,
+                {borderColor: t.chipBorder},
+                selectedGroups.includes(g) && {backgroundColor: COLORS.primary, borderColor: COLORS.primary},
+              ]}
+              onPress={() => toggleGroup(g)}>
+              <Text style={[
+                styles.groupOptionText,
+                {color: t.textSub},
+                selectedGroups.includes(g) && {color: '#fff'},
+              ]}>
                 {g}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-          <Text style={styles.addBtnText}>Add</Text>
+        <TouchableOpacity
+          style={[styles.addBtn, {backgroundColor: COLORS.primary}]}
+          onPress={handleAdd}>
+          <Text style={styles.addBtnText}>Add Anchor Day</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <Loader color={COLORS.primary} />
+        <View style={styles.loaderWrap}>
+          <Loader color={COLORS.primary} size={28} />
+        </View>
       ) : (
         <>
-          <Text style={[styles.sectionTitle, { color: t.text }]}>Upcoming Anchor Days</Text>
+          <Text style={[styles.sectionTitle, {color: t.text}]}>Upcoming</Text>
           {upcoming.length === 0 ? (
-            <Text style={[styles.empty, { color: t.textTertiary }]}>No upcoming anchor days.</Text>
+            <Text style={[styles.empty, {color: t.textTertiary}]}>No upcoming anchor days.</Text>
           ) : (
-            <View style={[styles.table, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-              {upcoming.map((item) => renderRow({ item }))}
+            <View style={[styles.table, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+              <FlatList
+                data={upcoming}
+                keyExtractor={item => item.date}
+                renderItem={renderRow}
+                scrollEnabled={false}
+              />
             </View>
           )}
 
-          <Text style={[styles.sectionTitle, { color: t.text }]}>Past Anchor Days</Text>
+          <Text style={[styles.sectionTitle, {color: t.text}]}>Past</Text>
           {past.length === 0 ? (
-            <Text style={[styles.empty, { color: t.textTertiary }]}>No past anchor days.</Text>
+            <Text style={[styles.empty, {color: t.textTertiary}]}>No past anchor days.</Text>
           ) : (
-            <View style={[styles.table, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-              {past.map((item) => renderRow({ item }))}
+            <View style={[styles.table, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+              <FlatList
+                data={past}
+                keyExtractor={item => item.date}
+                renderItem={renderRow}
+                scrollEnabled={false}
+              />
             </View>
           )}
         </>
@@ -158,44 +186,49 @@ export default function AnchorDaysScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 32 },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 14, letterSpacing: -0.3 },
-  addCard: { borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1 },
-  addTitle: { fontWeight: '700', marginBottom: 10, fontSize: 14 },
+  container: {flex: 1},
+  content: {padding: 16, paddingBottom: 40},
+  loaderWrap: {alignItems: 'center', paddingTop: 40},
+
+  addCard: {
+    borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  addTitle: {fontWeight: '800', fontSize: 15, marginBottom: 12, letterSpacing: -0.2},
   input: {
     borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 12,
-    fontSize: 14, marginBottom: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 14, marginBottom: 12,
   },
-  groupPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  groupPicker: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14},
   groupOption: {
-    borderWidth: 1.5, borderRadius: 20,
-    paddingVertical: 9, paddingHorizontal: 16,   // min 44px hit area via padding
-    minHeight: 38,
-    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1.5, borderRadius: 22,
+    paddingVertical: 9, paddingHorizontal: 16,
+    minHeight: 38, justifyContent: 'center', alignItems: 'center',
   },
-  groupOptionActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  groupOptionText: { fontWeight: '700', fontSize: 13 },
-  groupOptionTextActive: { color: '#fff' },
+  groupOptionText: {fontWeight: '700', fontSize: 13},
   addBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 10,
-    paddingVertical: 13, alignItems: 'center',
-    shadowColor: COLORS.primary, shadowOpacity: 0.3,
-    shadowRadius: 8, elevation: 4,
+    borderRadius: 12, paddingVertical: 13, alignItems: 'center',
+    shadowColor: COLORS.primary, shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
   },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  sectionTitle: { fontWeight: '700', fontSize: 14, marginTop: 18, marginBottom: 8, letterSpacing: 0.2 },
-  empty: { fontSize: 13, marginBottom: 8 },
-  table: { borderRadius: 12, overflow: 'hidden', borderWidth: 1 },
+  addBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
+
+  sectionTitle: {
+    fontWeight: '800', fontSize: 14, marginTop: 20, marginBottom: 10,
+    letterSpacing: 0.3, textTransform: 'uppercase',
+  },
+  empty: {fontSize: 13, marginBottom: 8},
+  table: {borderRadius: 14, overflow: 'hidden', borderWidth: 1},
   row: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
     borderBottomWidth: 1,
   },
-  rowDate: { flex: 2, fontSize: 13, fontWeight: '600' },
-  groupsRow: { flex: 3, flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  rowCount: { width: 36, textAlign: 'right', fontWeight: '800', fontSize: 14 },
-  chip: { borderRadius: 10, paddingVertical: 3, paddingHorizontal: 8 },
-  chipText: { fontSize: 11, fontWeight: '700' },
+  rowDateWrap: {flex: 2},
+  rowDate: {fontSize: 13, fontWeight: '600'},
+  groupsRow: {flex: 3, flexDirection: 'row', flexWrap: 'wrap', gap: 4},
+  countBadge: {borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, minWidth: 32, alignItems: 'center'},
+  rowCount: {fontWeight: '900', fontSize: 14},
 });
