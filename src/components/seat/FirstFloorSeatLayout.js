@@ -8,16 +8,16 @@ import {
   Dimensions,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { WorkstationSeatCell } from './WorkstationSeatCell';
+import { IsoWorkstationCell as WorkstationSeatCell } from './IsoWorkstationCell';
 
 // ─── Base dimensions (canvas width = 10 seats + gaps) ────────────────────────
-const BASE_SEAT_W = 72;
-const BASE_SEAT_H = 64;
-const BASE_GAP_X = 8;
-const BASE_GAP_Y = 10;
-const BASE_SECTION_GAP = 36;
-const BASE_AISLE_W = 64;
-const BASE_ENTRANCE_AISLE_W = 80;
+const BASE_SEAT_W = 82;
+const BASE_SEAT_H = 72;
+const BASE_GAP_X = 10;
+const BASE_GAP_Y = 12;
+const BASE_SECTION_GAP = 40;
+const BASE_AISLE_W = 68;
+const BASE_ENTRANCE_AISLE_W = 84;
 
 // ─── Seat colour logic ────────────────────────────────────────────────────────
 function getSeatColor(seat, selectedSeatId, myBookedSeatId, userEmail) {

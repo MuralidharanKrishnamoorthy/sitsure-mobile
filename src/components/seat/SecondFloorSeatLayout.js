@@ -8,14 +8,14 @@ import {
   Dimensions,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { WorkstationSeatCell } from './WorkstationSeatCell';
+import { IsoWorkstationCell as WorkstationSeatCell } from './IsoWorkstationCell';
 
 // ─── Base dimensions ──────────────────────────────────────────────────────────
-const SEAT_W = 72;
-const SEAT_H = 64;
-const GAP_X = 10;
-const BLOCK_GAP = 36;
-const SECTION_GAP = 20;
+const SEAT_W = 82;
+const SEAT_H = 72;
+const GAP_X = 12;
+const BLOCK_GAP = 40;
+const SECTION_GAP = 22;
 const MR_SCALE = 0.75;
 
 // ─── Sort seats by display_order, then label numeric, then id ─────────────────
