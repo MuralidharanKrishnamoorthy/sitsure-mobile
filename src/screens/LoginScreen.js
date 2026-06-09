@@ -1,14 +1,13 @@
-import React, {useContext, useState, useEffect, useRef} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Alert, StatusBar, Dimensions,
+  Alert, StatusBar, Dimensions, Image,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withRepeat, withSequence, FadeInDown, Easing,
+  useSharedValue, useAnimatedStyle, withTiming, withSpring, Easing,
 } from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Svg, {Path, Rect, G, Circle} from 'react-native-svg';
+import Svg, {Rect, Path} from 'react-native-svg';
 import Loader from '../components/Loader';
 import {UserContext} from '../context/UserContext';
 import {
@@ -16,14 +15,38 @@ import {
 } from '../services/authService';
 import {COLORS} from '../theme/colors';
 
-const {width: SCREEN_W, height: SCREEN_H} = Dimensions.get('window');
+const {width: W, height: H} = Dimensions.get('window');
 
-function MicrosoftIcon({size = 18}) {
+// Smooth organic wave — white fill sits on top of image bottom edge
+// Creates a gentle S-curve / wave transition from image into white content area
+const WAVE_H = 72;
+function WaveClip() {
+  // Cubic bezier wave: starts flush left, dips in middle, rises right
+  // Fills the white bg shape over the bottom of the image
+  const d = `
+    M0,${WAVE_H * 0.55}
+    C${W * 0.25},${WAVE_H * 1.1} ${W * 0.75},0 ${W},${WAVE_H * 0.45}
+    L${W},${WAVE_H}
+    L0,${WAVE_H}
+    Z
+  `;
+  return (
+    <Svg
+      width={W}
+      height={WAVE_H}
+      style={styles.wave}
+      viewBox={`0 0 ${W} ${WAVE_H}`}>
+      <Path d={d} fill="#ffffff" />
+    </Svg>
+  );
+}
+
+function MicrosoftIcon({size = 20}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 21 21" fill="none">
-      <Rect x="1" y="1" width="9" height="9" fill="#F25022" />
-      <Rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-      <Rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <Rect x="1"  y="1"  width="9" height="9" fill="#F25022" />
+      <Rect x="11" y="1"  width="9" height="9" fill="#7FBA00" />
+      <Rect x="1"  y="11" width="9" height="9" fill="#00A4EF" />
       <Rect x="11" y="11" width="9" height="9" fill="#FFB900" />
     </Svg>
   );
@@ -34,68 +57,55 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
-  // Glow pulse animation
-  const glowScale = useSharedValue(1);
-  const glowOpacity = useSharedValue(0.35);
-  const cardOpacity = useSharedValue(0);
-  const cardY = useSharedValue(30);
+  const imgOp    = useSharedValue(0);
+  const imgY     = useSharedValue(-30);
+  const titleOp  = useSharedValue(0);
+  const titleY   = useSharedValue(20);
+  const descOp   = useSharedValue(0);
+  const descY    = useSharedValue(20);
+  const btnOp    = useSharedValue(0);
+  const btnY     = useSharedValue(20);
   const btnScale = useSharedValue(1);
 
-  useEffect(() => {
-    // Entrance animation
-    cardOpacity.value = withTiming(1, {duration: 700, easing: Easing.out(Easing.cubic)});
-    cardY.value = withSpring(0, {damping: 16, stiffness: 90});
+  const SP = {damping: 15, stiffness: 100};
 
-    // Ambient glow pulse
-    glowScale.value = withRepeat(
-      withSequence(
-        withTiming(1.18, {duration: 2800, easing: Easing.inOut(Easing.sin)}),
-        withTiming(1, {duration: 2800, easing: Easing.inOut(Easing.sin)}),
-      ),
-      -1,
-      false,
-    );
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.55, {duration: 2800}),
-        withTiming(0.25, {duration: 2800}),
-      ),
-      -1,
-      false,
-    );
+  useEffect(() => {
+    imgOp.value = withTiming(1, {duration: 900, easing: Easing.out(Easing.cubic)});
+    imgY.value  = withSpring(0, SP);
+    setTimeout(() => {
+      titleOp.value = withTiming(1, {duration: 600});
+      titleY.value  = withSpring(0, SP);
+    }, 200);
+    setTimeout(() => {
+      descOp.value = withTiming(1, {duration: 600});
+      descY.value  = withSpring(0, SP);
+    }, 380);
+    setTimeout(() => {
+      btnOp.value = withTiming(1, {duration: 600});
+      btnY.value  = withSpring(0, SP);
+    }, 540);
   }, []);
 
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{scale: glowScale.value}],
-    opacity: glowOpacity.value,
-  }));
-
-  const cardStyle = useAnimatedStyle(() => ({
-    opacity: cardOpacity.value,
-    transform: [{translateY: cardY.value}],
-  }));
-
-  const btnAnimStyle = useAnimatedStyle(() => ({
-    transform: [{scale: btnScale.value}],
-  }));
+  const imgStyle   = useAnimatedStyle(() => ({opacity: imgOp.value,   transform: [{translateY: imgY.value}]}));
+  const titleStyle = useAnimatedStyle(() => ({opacity: titleOp.value, transform: [{translateY: titleY.value}]}));
+  const descStyle  = useAnimatedStyle(() => ({opacity: descOp.value,  transform: [{translateY: descY.value}]}));
+  const btnStyle   = useAnimatedStyle(() => ({opacity: btnOp.value,   transform: [{translateY: btnY.value}, {scale: btnScale.value}]}));
 
   const handleLogin = async () => {
+    if (loading) return;
     setLoading(true);
     btnScale.value = withSpring(0.97, {damping: 12});
     try {
       const result = await signInWithMicrosoft();
       const parsed = parseIdToken(result.idToken);
-      const email =
+      const email  =
         parsed?.preferred_username ||
         parsed?.upn ||
-        result.additionalParameters?.login_hint ||
-        '';
-
+        result.additionalParameters?.login_hint || '';
       if (!validateDomain(email)) {
         Alert.alert('Access Denied', 'Only @venzotechnologies.com accounts can sign in.');
         return;
       }
-
       await storeTokens({
         accessToken: result.accessToken,
         idToken: result.idToken,
@@ -103,7 +113,6 @@ export default function LoginScreen() {
         accessTokenExpirationDate: result.accessTokenExpirationDate,
         account: {email, name: parsed?.name},
       });
-
       await setAuthData({
         accessToken: result.accessToken,
         idToken: result.idToken,
@@ -119,35 +128,43 @@ export default function LoginScreen() {
     }
   };
 
+  const IMG_H = H * 0.56;
+
   return (
-    <View style={[styles.container, {paddingBottom: insets.bottom}]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgLight} />
+    <View style={[styles.root, {paddingBottom: insets.bottom + 28}]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Radial violet glow */}
-      <Animated.View style={[styles.glowOrb, glowStyle]} />
+      {/* ── Image block — full bleed, wave SVG overlaid at bottom ── */}
+      <Animated.View style={[{width: W, height: IMG_H}, imgStyle]}>
+        <Image
+          source={require('../../assets/venzo.png')}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        {/* Wave overlay sits at bottom of image, fills into white bg */}
+        <WaveClip />
+      </Animated.View>
 
-      {/* Card */}
-      <Animated.View style={[styles.card, cardStyle]}>
-        {/* Logo block */}
-        <View style={styles.logoBlock}>
-          <Text style={styles.logoText}>SitSure</Text>
-          <Text style={styles.logoTagline}>WORKSPACE BOOKING</Text>
-        </View>
+      {/* ── Content ── */}
+      <View style={styles.content}>
+        <Animated.Text style={[styles.title, titleStyle]}>
+          {'Welcome To '}
+          <Text style={styles.titleAccent}>SitSure</Text>
+        </Animated.Text>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        <Animated.Text style={[styles.desc, descStyle]}>
+          Reserve seat and manage your workspace effortlessly your smart seat booking companion.
+        </Animated.Text>
+      </View>
 
-        {/* Sign in label */}
-        <Text style={styles.signInLabel}>Sign in to continue</Text>
-
-        {/* Microsoft button */}
-        <Animated.View style={btnAnimStyle}>
+      {/* ── Actions ── */}
+      <View style={styles.actions}>
+        <Animated.View style={[btnStyle, {width: '100%'}]}>
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.btn, loading && styles.btnDisabled]}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.85}
-          >
+            activeOpacity={0.85}>
             {loading ? (
               <Loader color="#fff" size={22} />
             ) : (
@@ -155,131 +172,100 @@ export default function LoginScreen() {
                 <View style={styles.msIconWrap}>
                   <MicrosoftIcon size={18} />
                 </View>
-                <Text style={styles.buttonText}>Sign in with Microsoft</Text>
+                <Text style={styles.btnText}>Continue with Microsoft</Text>
               </>
             )}
           </TouchableOpacity>
         </Animated.View>
-
-      </Animated.View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: COLORS.bgLight,
-    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 28,
+    justifyContent: 'space-between',
   },
-  glowOrb: {
-    position: 'absolute',
-    width: SCREEN_W * 1.1,
-    height: SCREEN_W * 1.1,
-    borderRadius: SCREEN_W * 0.55,
-    backgroundColor: COLORS.primary,
-    opacity: 0.35,
-    top: SCREEN_H * 0.18,
-    alignSelf: 'center',
-    // Radial-like feel via large blur shadow
-    shadowColor: COLORS.primary,
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.9,
-    shadowRadius: 120,
-    elevation: 0,
-  },
-  card: {
+
+  image: {
     width: '100%',
-    maxWidth: 360,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 24,
-    paddingVertical: 36,
-    paddingHorizontal: 28,
-    borderWidth: 1,
-    borderColor: COLORS.primaryMuted,
-    shadowColor: COLORS.primary,
-    shadowOffset: {width: 0, height: 12},
-    shadowOpacity: 0.2,
-    shadowRadius: 32,
-    elevation: 20,
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
-  logoBlock: {
+
+  // SVG wave — absolute, sits at very bottom of image container
+  wave: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+  },
+
+  content: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 28,
+    justifyContent: 'center',
+    paddingHorizontal: 36,
+    gap: 14,
   },
-  logoIconWrap: {
-    marginBottom: 14,
-    shadowColor: COLORS.primary,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logoText: {
+
+  title: {
     fontSize: 32,
-    fontWeight: '900',
-    color: COLORS.primary,
-    letterSpacing: -1.2,
-    marginBottom: 4,
-  },
-  logoTagline: {
-    fontSize: 10,
-    color: COLORS.textSecondaryLight,
-    letterSpacing: 3.5,
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginBottom: 24,
-  },
-  signInLabel: {
-    fontSize: 13,
-    color: COLORS.textSecondaryLight,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    color: '#0f172a',
     textAlign: 'center',
-    marginBottom: 16,
-    fontWeight: '500',
-    letterSpacing: 0.2,
+    lineHeight: 40,
   },
-  button: {
-    backgroundColor: COLORS.primary,
+  titleAccent: {
+    color: COLORS.primary,
+  },
+
+  desc: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 300,
+  },
+
+  actions: {
+    width: '100%',
+    paddingHorizontal: 28,
+    paddingBottom: 4,
+  },
+
+  btn: {
+    width: '100%',
+    backgroundColor: '#0f172a',
     borderRadius: 14,
     paddingVertical: 16,
-    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
     minHeight: 54,
-    shadowColor: COLORS.primary,
+    shadowColor: '#000',
     shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
     elevation: 10,
   },
-  buttonDisabled: {opacity: 0.6, shadowOpacity: 0},
+  btnDisabled: {opacity: 0.6},
   msIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 6,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
     marginRight: 12,
   },
-  buttonText: {
-    color: '#FFFFFF',
+  btnText: {
+    color: '#fff',
     fontWeight: '700',
     fontSize: 15,
     letterSpacing: 0.2,
-  },
-  hint: {
-    color: COLORS.textTertiaryDark,
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 18,
-    letterSpacing: 0.1,
   },
 });

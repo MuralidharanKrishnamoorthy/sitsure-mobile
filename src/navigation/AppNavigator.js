@@ -1,32 +1,25 @@
 import React, {useContext, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Image, Pressable} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Pressable, Image} from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence,
-  withTiming, withSpring, Easing, FadeInDown, SlideInLeft, ZoomIn, FadeInUp,
-  interpolateColor, useDerivedValue,
+  withTiming, withSpring, Easing, FadeInDown,
 } from 'react-native-reanimated';
 import Loader from '../components/Loader';
 import Svg, {Path, Circle, Rect, G, Polyline, Line} from 'react-native-svg';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {createDrawerNavigator, DrawerContentScrollView} from '@react-navigation/drawer';
+// Drawer import removed — no drawer navigator used
 import {UserContext} from '../context/UserContext';
 import {useTheme} from '../context/ThemeContext';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import FunsightsScreen from '../screens/FunsightsScreen';
-import AllBookingsScreen from '../screens/admin/AllBookingsScreen';
-import SeatManagementScreen from '../screens/admin/SeatManagementScreen';
-import FloorManagementScreen from '../screens/admin/FloorManagementScreen';
-import AnchorDaysScreen from '../screens/admin/AnchorDaysScreen';
-import EmployeeGroupsScreen from '../screens/admin/EmployeeGroupsScreen';
 import {COLORS} from '../theme/colors';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
-const Drawer = createDrawerNavigator();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB ICONS
@@ -37,14 +30,23 @@ function HomeIcon({color, size, focused}) {
     <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
       {focused ? (
         <G>
-          <Path d="M14 3L2 13.5H5V24C5 24.55 5.45 25 6 25H11V18H17V25H22C22.55 25 23 24.55 23 24V13.5H26L14 3Z" fill={color} />
-          <Rect x="11" y="18" width="6" height="7" rx="1" fill="white" opacity={0.22} />
+          {/* Rounded filled house body */}
+          <Path
+            d="M5 13.5C5 12.7 5.35 11.95 5.96 11.44L12.96 5.44C13.55 4.95 14.45 4.95 15.04 5.44L22.04 11.44C22.65 11.95 23 12.7 23 13.5V22C23 23.1 22.1 24 21 24H18C17.45 24 17 23.55 17 23V19C17 18.45 16.55 18 16 18H12C11.45 18 11 18.45 11 19V23C11 23.55 10.55 24 10 24H7C5.9 24 5 23.1 5 22V13.5Z"
+            fill={color}
+          />
+          {/* Door cutout */}
+          <Rect x="11" y="18" width="6" height="6" rx="1.5" fill="white" opacity={0.2} />
         </G>
       ) : (
         <G>
-          <Path d="M14 4L3 13.5H6V23.5C6 24.05 6.45 24.5 7 24.5H11.5V18H16.5V24.5H21C21.55 24.5 22 24.05 22 23.5V13.5H25L14 4Z"
-            stroke={color} strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round" />
-          <Rect x="11.5" y="18" width="5" height="6.5" rx="0.8" stroke={color} strokeWidth={1.2} />
+          {/* Rounded stroke house */}
+          <Path
+            d="M5 13.5C5 12.7 5.35 11.95 5.96 11.44L12.96 5.44C13.55 4.95 14.45 4.95 15.04 5.44L22.04 11.44C22.65 11.95 23 12.7 23 13.5V22C23 23.1 22.1 24 21 24H18C17.45 24 17 23.55 17 23V19C17 18.45 16.55 18 16 18H12C11.45 18 11 18.45 11 19V23C11 23.55 10.55 24 10 24H7C5.9 24 5 23.1 5 22V13.5Z"
+            stroke={color} strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round"
+          />
+          {/* Door */}
+          <Rect x="11.5" y="18.5" width="5" height="5.5" rx="1.2" stroke={color} strokeWidth={1.3} />
         </G>
       )}
     </Svg>
@@ -109,94 +111,107 @@ function TabIcon({name, color, size, focused}) {
   return null;
 }
 
-function MainTabs() {
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPANDABLE TAB BAR — active tab expands with animated label (nav.txt port)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TAB_DEFS = [
+  {name: 'Home',      label: 'Home'},
+  {name: 'History',   label: 'History'},
+  {name: 'Funsights', label: 'Funsights'},
+];
+
+function ExpandableTabItem({tabDef, focused, onPress, t}) {
+  const width      = useSharedValue(focused ? 120 : 52);
+  const labelOpacity = useSharedValue(focused ? 1 : 0);
+  const bgOpacity  = useSharedValue(focused ? 1 : 0);
+  const iconScale  = useSharedValue(focused ? 1.08 : 1);
+
+  useEffect(() => {
+    width.value        = withSpring(focused ? 120 : 52, {damping: 18, stiffness: 160, mass: 0.8});
+    labelOpacity.value = withTiming(focused ? 1 : 0,   {duration: focused ? 220 : 120, easing: Easing.out(Easing.cubic)});
+    bgOpacity.value    = withTiming(focused ? 1 : 0,   {duration: 200});
+    iconScale.value    = withSpring(focused ? 1.12 : 1, {damping: 14, stiffness: 200});
+  }, [focused]);
+
+  const pillStyle  = useAnimatedStyle(() => ({width: width.value}));
+  const labelStyle = useAnimatedStyle(() => ({opacity: labelOpacity.value}));
+  const bgStyle    = useAnimatedStyle(() => ({opacity: bgOpacity.value}));
+  const iconStyle  = useAnimatedStyle(() => ({transform: [{scale: iconScale.value}]}));
+
+  return (
+    <Pressable onPress={onPress} style={styles.expandTabBtn}>
+      <Animated.View style={[styles.expandTabPill, pillStyle]}>
+        {/* Active bg */}
+        <Animated.View style={[
+          StyleSheet.absoluteFill,
+          styles.expandTabBg,
+          {backgroundColor: COLORS.primaryMuted},
+          bgStyle,
+        ]} />
+        {/* Icon */}
+        <Animated.View style={[styles.expandTabIcon, iconStyle]}>
+          <TabIcon
+            name={tabDef.name}
+            color={focused ? COLORS.primary : t.tabInactive}
+            size={22}
+            focused={focused}
+          />
+        </Animated.View>
+        {/* Label — slides in, hidden when inactive */}
+        {focused && (
+          <Animated.Text
+            style={[styles.expandTabLabel, {color: COLORS.primary}, labelStyle]}
+            numberOfLines={1}>
+            {tabDef.label}
+          </Animated.Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function CustomTabBar({state, descriptors, navigation}) {
   const {t} = useTheme();
   return (
+    <View style={styles.expandBarOuter}>
+      <View style={[styles.expandBarInner, {
+        backgroundColor: t.tabBar,
+        borderColor: t.tabBarBorder,
+      }]}>
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const tabDef  = TAB_DEFS[index];
+          const onPress = () => {
+            const event = navigation.emit({type: 'tabPress', target: route.key, canPreventDefault: true});
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+          return (
+            <ExpandableTabItem
+              key={route.key}
+              tabDef={tabDef}
+              focused={focused}
+              onPress={onPress}
+              t={t}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function MainTabs() {
+  return (
     <Tab.Navigator
-      screenOptions={({route}) => ({
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: t.tabInactive,
-        tabBarStyle: {
-          backgroundColor: t.tabBar,
-          borderTopColor: t.tabBarBorder,
-          borderTopWidth: 1,
-          height: 68,
-          paddingBottom: 10,
-          paddingTop: 8,
-          elevation: 20,
-          shadowColor: '#000',
-          shadowOffset: {width: 0, height: -6},
-          shadowOpacity: t.dark ? 0.5 : 0.09,
-          shadowRadius: 20,
-        },
-        tabBarLabelStyle: {fontSize: 11, fontWeight: '700', letterSpacing: 0.25},
-        tabBarIcon: ({color, size, focused}) => (
-          <TabIcon name={route.name} color={color} size={size + 2} focused={focused} />
-        ),
-      })}>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
+      tabBar={props => <CustomTabBar {...props} />}
+      screenOptions={{headerShown: false}}>
+      <Tab.Screen name="Home"      component={HomeScreen} />
+      <Tab.Screen name="History"   component={HistoryScreen} />
       <Tab.Screen name="Funsights" component={FunsightsScreen} />
     </Tab.Navigator>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DRAWER ICONS — admin nav
-// ─────────────────────────────────────────────────────────────────────────────
-
-function IconAllBookings({color, size = 22}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="4" width="18" height="17" rx="2.5" stroke={color} strokeWidth={1.7} />
-      <Path d="M8 2V6M16 2V6M3 9H21" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path d="M8 13L11 16L16 11" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function IconSeatMgmt({color, size = 22}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth={1.7} />
-      <Rect x="14" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth={1.7} />
-      <Rect x="3" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth={1.7} />
-      <Rect x="14" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function IconFloorMgmt({color, size = 22}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 20H21" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path d="M5 20V14H19V20" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M7 14V9H17V14" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M9 9V5H15V9" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function IconAnchorDays({color, size = 22}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="4" width="18" height="17" rx="2.5" stroke={color} strokeWidth={1.7} />
-      <Path d="M8 2V6M16 2V6M3 9H21" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Circle cx="12" cy="15" r="2.5" stroke={color} strokeWidth={1.6} />
-      <Path d="M12 17.5V20M10 20H14" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-function IconEmpGroups({color, size = 22}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="9" cy="7" r="3" stroke={color} strokeWidth={1.7} />
-      <Path d="M3 21V19C3 16.79 5.24 15 8 15" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Circle cx="16" cy="9" r="2.5" stroke={color} strokeWidth={1.6} />
-      <Path d="M21 21V19.5C21 17.57 19.21 16 17 16H15" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
-    </Svg>
   );
 }
 
@@ -224,254 +239,53 @@ function MoonIcon({size = 18, color}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATED NAV ITEM
+// THEME TOGGLE — header right icon button (Sun↔Moon with scale+rotate anim)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ADMIN_ROUTES = [
-  {name: 'AllBookings',     label: 'All Bookings',     Icon: IconAllBookings},
-  {name: 'SeatManagement',  label: 'Seat Management',  Icon: IconSeatMgmt},
-  {name: 'FloorManagement', label: 'Floor Management', Icon: IconFloorMgmt},
-  {name: 'AnchorDays',      label: 'Anchor Days',      Icon: IconAnchorDays},
-  {name: 'EmployeeGroups',  label: 'Employee Groups',  Icon: IconEmpGroups},
-];
-
-function DrawerNavItem({route, index, isActive, onPress, t}) {
-  const scale = useSharedValue(1);
-  const barWidth = useSharedValue(isActive ? 4 : 0);
-  const bgOpacity = useSharedValue(isActive ? 1 : 0);
-
-  useEffect(() => {
-    barWidth.value = withSpring(isActive ? 4 : 0, {damping: 14, stiffness: 120});
-    bgOpacity.value = withTiming(isActive ? 1 : 0, {duration: 220});
-  }, [isActive]);
-
-  const pressIn = () => { scale.value = withSpring(0.96, {damping: 12}); };
-  const pressOut = () => { scale.value = withSpring(1, {damping: 12}); };
-
-  const scaleStyle = useAnimatedStyle(() => ({transform: [{scale: scale.value}]}));
-  const barStyle  = useAnimatedStyle(() => ({width: barWidth.value}));
-  const bgStyle   = useAnimatedStyle(() => ({opacity: bgOpacity.value}));
-
-  const iconColor = isActive ? COLORS.primary : t.textSub;
-  const labelColor = isActive ? COLORS.primary : t.text;
-
-  return (
-    <Animated.View entering={SlideInLeft.delay(index * 55).duration(380).springify().damping(16)}>
-      <Animated.View style={scaleStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={pressIn}
-        onPressOut={pressOut}
-        style={styles.navItem}>
-        {/* Active bg fill */}
-        <Animated.View style={[styles.navItemBg, {backgroundColor: COLORS.primaryMuted}, bgStyle]} />
-        {/* Left accent bar */}
-        <Animated.View style={[styles.navItemBar, {backgroundColor: COLORS.primary}, barStyle]} />
-        {/* Icon */}
-        <View style={styles.navItemIcon}>
-          <route.Icon color={iconColor} size={21} />
-        </View>
-        {/* Label */}
-        <Text style={[styles.navItemLabel, {color: labelColor, fontWeight: isActive ? '700' : '500'}]}>
-          {route.label}
-        </Text>
-      </Pressable>
-      </Animated.View>
-    </Animated.View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ANIMATED THEME PILL
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AnimatedThemeToggle({darkMode, toggleTheme, t}) {
-  const dotX = useSharedValue(darkMode ? 18 : 2);
+function ThemeToggleButton() {
+  const {darkMode, toggleTheme} = useTheme();
   const iconRotate = useSharedValue(darkMode ? 180 : 0);
-  const pressScale = useSharedValue(1);
+  const iconScale  = useSharedValue(1);
+  const btnScale   = useSharedValue(1);
 
   useEffect(() => {
-    dotX.value = withSpring(darkMode ? 18 : 2, {damping: 14, stiffness: 130});
-    iconRotate.value = withTiming(darkMode ? 180 : 0, {duration: 350, easing: Easing.inOut(Easing.cubic)});
+    iconScale.value  = withSequence(withSpring(0, {damping: 12}), withSpring(1, {damping: 14}));
+    iconRotate.value = withTiming(darkMode ? 180 : 0, {duration: 400, easing: Easing.inOut(Easing.cubic)});
   }, [darkMode]);
 
-  const dotStyle = useAnimatedStyle(() => ({
-    transform: [{translateX: dotX.value}],
-  }));
-
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{rotate: `${iconRotate.value}deg`}],
+    transform: [{rotate: `${iconRotate.value}deg`}, {scale: iconScale.value}],
   }));
-
-  const btnStyle = useAnimatedStyle(() => ({
-    transform: [{scale: pressScale.value}],
-  }));
+  const btnStyle = useAnimatedStyle(() => ({transform: [{scale: btnScale.value}]}));
 
   const handlePress = () => {
-    pressScale.value = withSequence(
-      withSpring(0.94, {damping: 10}),
-      withSpring(1, {damping: 12}),
-    );
+    btnScale.value = withSequence(withSpring(0.82, {damping: 10}), withSpring(1, {damping: 13}));
     toggleTheme();
   };
 
   return (
-    <Animated.View entering={FadeInUp.delay(320).duration(400)}>
-      <Animated.View style={[styles.themeRow, {borderColor: t.cardBorder, backgroundColor: t.surface}, btnStyle]}>
-      <Pressable onPress={handlePress} style={styles.themeRowInner}>
-        <View style={[styles.themeIconBox, {backgroundColor: t.card}]}>
-          <Animated.View style={iconStyle}>
-            {darkMode
-              ? <SunIcon color={COLORS.primary} size={17} />
-              : <MoonIcon color={COLORS.primary} size={17} />}
-          </Animated.View>
-        </View>
-        <Text style={[styles.themeLabel, {color: t.text}]}>
-          {darkMode ? 'Light Mode' : 'Dark Mode'}
-        </Text>
-        {/* Animated pill */}
-        <View style={[styles.themePill, {backgroundColor: darkMode ? COLORS.primaryMuted : t.chipBg}]}>
-          <Animated.View style={[styles.themeDot, {backgroundColor: COLORS.primary}, dotStyle]} />
-        </View>
-      </Pressable>
+    <Pressable
+      onPress={handlePress}
+      style={styles.themeHeaderBtn}
+      hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+      <Animated.View style={[styles.themeHeaderBtnInner, btnStyle]}>
+        <Animated.View style={iconStyle}>
+          {darkMode
+            ? <SunIcon  color="#fff" size={19} />
+            : <MoonIcon color="#fff" size={19} />}
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+    </Pressable>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATED ONLINE DOT
+// APP STACK — authenticated flow (no drawer, logout lives in avatar modal)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PulsingDot({borderColor}) {
-  const scale = useSharedValue(1);
-  const ringOpacity = useSharedValue(1);
-
-  useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.4, {duration: 800, easing: Easing.inOut(Easing.sin)}),
-        withTiming(1,   {duration: 800}),
-      ),
-      -1, false,
-    );
-    ringOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0, {duration: 800}),
-        withTiming(1, {duration: 800}),
-      ),
-      -1, false,
-    );
-  }, []);
-
-  const dotStyle  = useAnimatedStyle(() => ({transform: [{scale: scale.value}]}));
-  const ringStyle = useAnimatedStyle(() => ({opacity: ringOpacity.value}));
-
+function AppStack() {
   return (
-    <View style={[styles.onlineDotWrap, {borderColor}]}>
-      <Animated.View style={[styles.onlineDotRing, ringStyle]} />
-      <Animated.View style={[styles.onlineDot, dotStyle]} />
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CUSTOM DRAWER CONTENT
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CustomDrawerContent(props) {
-  const {employee, logout, isAdmin} = useContext(UserContext);
-  const {darkMode, toggleTheme, t} = useTheme();
-
-  // Active route = current drawer screen name
-  const activeRouteName = props.state?.routes?.[props.state.index]?.name ?? '';
-
-  return (
-    <DrawerContentScrollView
-      {...props}
-      style={{backgroundColor: t.drawerBg}}
-      contentContainerStyle={{paddingBottom: 32}}
-      showsVerticalScrollIndicator={false}>
-
-      {/* ── Profile section ──────────────────────────────────────────────────── */}
-      <View style={[styles.profileSection, {borderBottomColor: t.divider}]}>
-        <Animated.View entering={ZoomIn.delay(60).duration(400)} style={styles.profileAvatarWrap}>
-          {employee?.profilePic ? (
-            <Image source={{uri: employee.profilePic}} style={styles.profileImg} />
-          ) : (
-            <View style={[styles.profileAvatarFallback, {backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primaryGlow}]}>
-              <Text style={[styles.profileInitial, {color: t.drawerActiveText}]}>
-                {employee?.name ? employee.name[0].toUpperCase() : '?'}
-              </Text>
-            </View>
-          )}
-          <PulsingDot borderColor={t.drawerBg} />
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(120).duration(380)} style={styles.profileInfo}>
-          <Text style={[styles.profileName, {color: t.text}]} numberOfLines={1}>
-            {employee?.name}
-          </Text>
-          <Text style={[styles.profileEmail, {color: t.textSub}]} numberOfLines={1}>
-            {employee?.email}
-          </Text>
-          {employee?.empid && (
-            <View style={[styles.empIdBadge, {backgroundColor: t.badgeBg}]}>
-              <Text style={[styles.empIdText, {color: t.badgeText}]}>ID {employee.empid}</Text>
-            </View>
-          )}
-        </Animated.View>
-      </View>
-
-      {/* ── Section label ────────────────────────────────────────────────────── */}
-      {isAdmin && (
-        <Animated.View entering={FadeInDown.delay(180).duration(300)}>
-          <Text style={[styles.sectionLabel, {color: t.textTertiary}]}>ADMIN</Text>
-        </Animated.View>
-      )}
-
-      {/* ── Admin nav items ───────────────────────────────────────────────────── */}
-      {isAdmin && ADMIN_ROUTES.map((route, index) => (
-        <DrawerNavItem
-          key={route.name}
-          route={route}
-          index={index}
-          isActive={activeRouteName === route.name}
-          t={t}
-          onPress={() => props.navigation.navigate(route.name)}
-        />
-      ))}
-
-
-      {/* ── Divider ───────────────────────────────────────────────────────────── */}
-      <View style={[styles.divider, {backgroundColor: t.divider}]} />
-
-      {/* ── Theme toggle ──────────────────────────────────────────────────────── */}
-      <AnimatedThemeToggle darkMode={darkMode} toggleTheme={toggleTheme} t={t} />
-
-      {/* ── Logout ────────────────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInUp.delay(420).duration(380)}>
-        <TouchableOpacity
-          style={[styles.logoutBtn, {borderColor: 'rgba(239,83,80,0.20)', backgroundColor: 'rgba(239,83,80,0.07)'}]}
-          onPress={logout}
-          activeOpacity={0.8}>
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </DrawerContentScrollView>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN DRAWER
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AdminDrawer() {
-  const {isAdmin} = useContext(UserContext);
-  const {t} = useTheme();
-  return (
-    <Drawer.Navigator
-      drawerContent={props => <CustomDrawerContent {...props} />}
+    <Stack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: COLORS.primary,
@@ -481,30 +295,14 @@ function AdminDrawer() {
         },
         headerTintColor: '#fff',
         headerTitleStyle: {fontWeight: '800', fontSize: 17, letterSpacing: -0.3},
-        drawerActiveTintColor: t.drawerActiveText,
-        drawerActiveBackgroundColor: t.drawerActiveBg,
-        drawerInactiveTintColor: t.textSub,
-        drawerStyle: {backgroundColor: t.drawerBg},
+        headerRight: () => <ThemeToggleButton />,
       }}>
-      {/* MainTabs — hidden from drawer (bottom tabs handle Home/History/Funsights) */}
-      <Drawer.Screen
+      <Stack.Screen
         name="MainTabs"
         component={MainTabs}
-        options={{
-          title: 'SitSure',
-          drawerItemStyle: {display: 'none'},
-        }}
+        options={{title: 'SitSure'}}
       />
-      {isAdmin && (
-        <>
-          <Drawer.Screen name="AllBookings"     component={AllBookingsScreen}     options={{title: 'All Bookings'}} />
-          <Drawer.Screen name="SeatManagement"  component={SeatManagementScreen}  options={{title: 'Seat Management'}} />
-          <Drawer.Screen name="FloorManagement" component={FloorManagementScreen} options={{title: 'Floor Management'}} />
-          <Drawer.Screen name="AnchorDays"      component={AnchorDaysScreen}      options={{title: 'Anchor Days'}} />
-          <Drawer.Screen name="EmployeeGroups"  component={EmployeeGroupsScreen}  options={{title: 'Employee Groups'}} />
-        </>
-      )}
-    </Drawer.Navigator>
+    </Stack.Navigator>
   );
 }
 
@@ -513,35 +311,48 @@ function AdminDrawer() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SplashScreen() {
-  const pulse = useSharedValue(1);
-  const opacity = useSharedValue(0);
+  const opacity  = useSharedValue(0);
+  const logoScale = useSharedValue(0.88);
+  const dotOp1   = useSharedValue(0.3);
+  const dotOp2   = useSharedValue(0.3);
+  const dotOp3   = useSharedValue(0.3);
 
   useEffect(() => {
-    opacity.value = withTiming(1, {duration: 600, easing: Easing.out(Easing.cubic)});
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.12, {duration: 900, easing: Easing.inOut(Easing.sin)}),
-        withTiming(1,    {duration: 900, easing: Easing.inOut(Easing.sin)}),
-      ),
-      -1, false,
-    );
+    opacity.value   = withTiming(1, {duration: 500, easing: Easing.out(Easing.cubic)});
+    logoScale.value = withSpring(1, {damping: 14, stiffness: 120});
+    // Staggered dot pulse loop
+    const loop = (sv, delay) => setTimeout(() => {
+      sv.value = withRepeat(
+        withSequence(
+          withTiming(1,   {duration: 380}),
+          withTiming(0.3, {duration: 380}),
+        ), -1, false,
+      );
+    }, delay);
+    loop(dotOp1, 0);
+    loop(dotOp2, 180);
+    loop(dotOp3, 360);
   }, []);
 
-  const pulseStyle = useAnimatedStyle(() => ({transform: [{scale: pulse.value}]}));
   const fadeStyle  = useAnimatedStyle(() => ({opacity: opacity.value}));
+  const logoStyle  = useAnimatedStyle(() => ({transform: [{scale: logoScale.value}]}));
+  const d1Style    = useAnimatedStyle(() => ({opacity: dotOp1.value}));
+  const d2Style    = useAnimatedStyle(() => ({opacity: dotOp2.value}));
+  const d3Style    = useAnimatedStyle(() => ({opacity: dotOp3.value}));
 
   return (
     <Animated.View style={[styles.splash, fadeStyle]}>
-      <Animated.View style={[styles.splashGlow, pulseStyle]} />
-      <Svg width={52} height={52} viewBox="0 0 36 36" fill="none">
-        <Rect width="36" height="36" rx="10" fill={COLORS.primary} />
-        <Path d="M10 26L18 10L26 26" stroke="#fff" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M13 21H23" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" />
-      </Svg>
+      <Animated.Image
+        source={require('../../assets/venzo.png')}
+        style={[styles.splashLogo, logoStyle]}
+        resizeMode="contain"
+      />
       <Text style={styles.splashText}>SitSure</Text>
       <Text style={styles.splashSub}>WORKSPACE BOOKING</Text>
-      <View style={styles.splashLoaderWrap}>
-        <Loader color={COLORS.primary} size={22} />
+      <View style={styles.splashDots}>
+        <Animated.View style={[styles.splashDot, d1Style]} />
+        <Animated.View style={[styles.splashDot, d2Style]} />
+        <Animated.View style={[styles.splashDot, d3Style]} />
       </View>
     </Animated.View>
   );
@@ -559,7 +370,7 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {!user
           ? <Stack.Screen name="Login" component={LoginScreen} />
-          : <Stack.Screen name="App"   component={AdminDrawer} />
+          : <Stack.Screen name="App"   component={AppStack} />
         }
       </Stack.Navigator>
     </NavigationContainer>
@@ -572,125 +383,73 @@ export default function AppNavigator() {
 
 const styles = StyleSheet.create({
   // ── Splash ─────────────────────────────────────────────────────────────────
-  splash: {flex: 1, backgroundColor: COLORS.bgLight, justifyContent: 'center', alignItems: 'center', gap: 12},
-  splashGlow: {
-    position: 'absolute', width: 280, height: 280, borderRadius: 140,
-    backgroundColor: COLORS.primary, opacity: 0.15,
-    shadowColor: COLORS.primary, shadowOffset: {width: 0, height: 0}, shadowOpacity: 1, shadowRadius: 80,
-  },
-  splashText: {color: COLORS.primary, fontSize: 38, fontWeight: '900', letterSpacing: -1.5, marginTop: 6},
-  splashSub: {color: COLORS.textSecondaryLight, fontSize: 10, fontWeight: '600', letterSpacing: 3.5},
-  splashLoaderWrap: {marginTop: 36},
+  splash: {flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', gap: 10},
+  splashLogo: {width: 120, height: 120, borderRadius: 24, marginBottom: 8},
+  splashText: {color: '#0f172a', fontSize: 32, fontWeight: '900', letterSpacing: -1.2},
+  splashSub: {color: '#94a3b8', fontSize: 10, fontWeight: '600', letterSpacing: 3.5},
+  splashDots: {flexDirection: 'row', gap: 8, marginTop: 32},
+  splashDot: {width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary},
 
-  // ── Drawer top strip ───────────────────────────────────────────────────────
-  topStrip: {
-    height: 6, width: '100%', marginBottom: 0,
+  // ── Theme toggle header button ─────────────────────────────────────────────
+  themeHeaderBtn: {
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  topStripOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-
-  // ── Profile ────────────────────────────────────────────────────────────────
-  profileSection: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 22,
-    borderBottomWidth: 1, marginBottom: 6,
-  },
-  profileAvatarWrap: {marginRight: 14, position: 'relative'},
-  profileImg: {width: 52, height: 52, borderRadius: 26},
-  profileAvatarFallback: {
-    width: 52, height: 52, borderRadius: 26,
-    borderWidth: 2, justifyContent: 'center', alignItems: 'center',
-  },
-  profileInitial: {fontWeight: '800', fontSize: 21},
-
-  // Pulsing online dot
-  onlineDotWrap: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 14, height: 14, borderRadius: 7,
-    borderWidth: 2, backgroundColor: '#4caf50',
-    justifyContent: 'center', alignItems: 'center',
-    overflow: 'visible',
-  },
-  onlineDotRing: {
-    position: 'absolute',
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#4caf50', opacity: 0.3,
-  },
-  onlineDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#4caf50',
+  themeHeaderBtnInner: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
 
-  profileInfo: {flex: 1, minWidth: 0},
-  profileName: {fontWeight: '800', fontSize: 15, letterSpacing: -0.3, marginBottom: 2},
-  profileEmail: {fontSize: 12, marginBottom: 6},
-  empIdBadge: {alignSelf: 'flex-start', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8},
-  empIdText: {fontSize: 11, fontWeight: '700', letterSpacing: 0.4},
-
-  // ── Section label ──────────────────────────────────────────────────────────
-  sectionLabel: {
-    fontSize: 10, fontWeight: '800', letterSpacing: 1.8,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6,
+  // ── Expandable tab bar ─────────────────────────────────────────────────────
+  expandBarOuter: {
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: -4},
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 18,
+  },
+  expandBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    borderTopWidth: 1,
+    borderRadius: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    gap: 4,
+  },
+  expandTabBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expandTabPill: {
+    height: 44,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  expandTabBg: {
+    borderRadius: 22,
+  },
+  expandTabIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expandTabLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+    flexShrink: 1,
   },
 
-  // ── Nav items ──────────────────────────────────────────────────────────────
-  navItem: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 10, marginVertical: 2,
-    borderRadius: 12, overflow: 'hidden',
-    minHeight: 48, paddingRight: 12,
-    position: 'relative',
-  },
-  navItemBg: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 12,
-  },
-  navItemBar: {
-    position: 'absolute', left: 0, top: 8, bottom: 8,
-    borderRadius: 2,
-  },
-  navItemIcon: {
-    width: 44, height: 48, alignItems: 'center', justifyContent: 'center',
-    paddingLeft: 10,
-  },
-  navItemLabel: {flex: 1, fontSize: 14, letterSpacing: 0.1},
-
-  // ── No admin msg ───────────────────────────────────────────────────────────
-  noAdminMsg: {
-    margin: 16, borderRadius: 12, padding: 14,
-  },
-  noAdminText: {fontSize: 13, textAlign: 'center'},
-
-  // ── Divider ────────────────────────────────────────────────────────────────
-  divider: {height: 1, marginHorizontal: 16, marginVertical: 12},
-
-  // ── Theme toggle ───────────────────────────────────────────────────────────
-  themeRow: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 12, marginBottom: 4,
-    borderRadius: 14, borderWidth: 1,
-  },
-  themeRowInner: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  themeIconBox: {
-    width: 34, height: 34, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
-  },
-  themeLabel: {flex: 1, fontSize: 14, fontWeight: '600'},
-  themePill: {
-    width: 40, height: 22, borderRadius: 11,
-    justifyContent: 'center', paddingHorizontal: 2, overflow: 'hidden',
-  },
-  themeDot: {width: 18, height: 18, borderRadius: 9, position: 'absolute'},
-
-  // ── Logout ─────────────────────────────────────────────────────────────────
-  logoutBtn: {
-    margin: 16, marginTop: 8, borderRadius: 14,
-    padding: 14, alignItems: 'center', borderWidth: 1,
-  },
-  logoutText: {color: '#ef5350', fontWeight: '700', fontSize: 14},
 });

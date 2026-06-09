@@ -11,8 +11,8 @@ import { COLORS } from '../../theme/colors';
 import { IsoWorkstationCell as WorkstationSeatCell } from './IsoWorkstationCell';
 
 // ─── Base dimensions (canvas width = 10 seats + gaps) ────────────────────────
-const BASE_SEAT_W = 82;
-const BASE_SEAT_H = 72;
+const BASE_SEAT_W = 108;
+const BASE_SEAT_H = 96;
 const BASE_GAP_X = 10;
 const BASE_GAP_Y = 12;
 const BASE_SECTION_GAP = 40;

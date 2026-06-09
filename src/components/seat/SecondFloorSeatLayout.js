@@ -11,8 +11,8 @@ import { COLORS } from '../../theme/colors';
 import { IsoWorkstationCell as WorkstationSeatCell } from './IsoWorkstationCell';
 
 // ─── Base dimensions ──────────────────────────────────────────────────────────
-const SEAT_W = 82;
-const SEAT_H = 72;
+const SEAT_W = 108;
+const SEAT_H = 96;
 const GAP_X = 12;
 const BLOCK_GAP = 40;
 const SECTION_GAP = 22;

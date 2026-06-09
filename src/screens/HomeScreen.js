@@ -1,18 +1,19 @@
 import React, {useState, useEffect, useContext, useCallback, useRef} from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, Modal, Image,
+  Alert, Modal, Image, PanResponder,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  FadeInDown, ZoomIn,
+  FadeInDown,
 } from 'react-native-reanimated';
 import {UserContext} from '../context/UserContext';
 import {getGraphUserProfile} from '../services/graphService';
 import {getFloors} from '../services/seatService';
 import {
   getSeatBookings, getUserBookingForDate, bookSeat,
-  cancelSeatBooking, getAnchorDayForDate, getBookingCountForDate,
+  cancelSeatBooking, getAnchorDayForDate,
 } from '../services/bookingService';
 import {getTodayInKolkata, formatDate, isUpcomingOrToday, isThursdayOrFriday} from '../utils/dateUtils';
 import {computeRestrictions, canUserBook, isFirstFloor, isSecondFloor, isThirdFloor} from '../utils/bookingRestrictions';
@@ -33,8 +34,16 @@ function getGreeting() {
 }
 
 export default function HomeScreen() {
-  const {employee, isAdmin, accessToken} = useContext(UserContext);
+  const {employee, accessToken, logout} = useContext(UserContext);
   const {t} = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const profileSheetPan = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && Math.abs(gs.dy) > Math.abs(gs.dx),
+    onPanResponderRelease: (_, gs) => {
+      if (gs.dy > 60) setShowProfileModal(false);
+    },
+  })).current;
   const [floors, setFloors] = useState([]);
   const [selectedFloorId, setSelectedFloorId] = useState(null);
   const [date, setDate] = useState(getTodayInKolkata());
@@ -42,15 +51,13 @@ export default function HomeScreen() {
   const [myBookedSeat, setMyBookedSeat] = useState(null);
   const [selectedSeatId, setSelectedSeatId] = useState(null);
   const [anchorDay, setAnchorDay] = useState(null);
-  const [bookingCount, setBookingCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
-  const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
+  const [calWeekOffset, setCalWeekOffset] = useState(0);
   const [bookedProfile, setBookedProfile] = useState({visible: false, loading: false, error: '', data: null, seat: null});
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const todayStr = getTodayInKolkata();
 
   const bookBtnScale = useSharedValue(1);
@@ -98,17 +105,13 @@ export default function HomeScreen() {
       if (stale()) return;
       setSeats(seatData);
       setMyBookedSeat(myBooking);
-      if (isAdmin) {
-        const count = await getBookingCountForDate(date);
-        setBookingCount(count);
-      }
     } catch (err) {
       if (signal?.cancelled || !mountedRef.current) return;
       Alert.alert('Error', 'Failed to load seat data');
     } finally {
       if (!signal?.cancelled && mountedRef.current) setLoading(false);
     }
-  }, [selectedFloorId, date, employee?.email, isAdmin]);
+  }, [selectedFloorId, date, employee?.email]);
 
   useEffect(() => {
     let active = true;
@@ -243,136 +246,118 @@ export default function HomeScreen() {
 
         {/* ── Greeting header ──────────────────────────────────────────────── */}
         <View style={styles.headerBlock}>
-          <View>
+          {/* Left: greeting + name + legend */}
+          <View style={{flex: 1}}>
             <Text style={[styles.greeting, {color: t.textSub}]}>{getGreeting()}</Text>
             <Text style={[styles.userName, {color: t.text}]}>{firstName}</Text>
-          </View>
-        </View>
-
-        {/* ── Admin insight card ────────────────────────────────────────────── */}
-        {isAdmin && (
-          <Animated.View
-            entering={FadeInDown.delay(80).duration(400)}
-            style={[styles.adminCard, {backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primaryGlow}]}>
-            <View style={styles.adminCardRow}>
-              <Text style={[styles.adminCardLabel, {color: COLORS.primary}]}>Today's Bookings</Text>
-              <Text style={[styles.adminCardValue, {color: COLORS.primary}]}>{bookingCount}</Text>
+            <View style={styles.legendSide}>
+              {[
+                {color: COLORS.seatAvailableAccent, label: 'Available'},
+                {color: COLORS.seatBookedAccent,    label: 'Booked'},
+                {color: COLORS.myBookingText,       label: 'My Seat'},
+                {color: COLORS.seatDisabledAccent,  label: 'Disabled'},
+              ].map(({color, label}) => (
+                <View key={label} style={styles.legendItem}>
+                  <View style={[styles.legendDot, {backgroundColor: color}]} />
+                  <Text style={[styles.legendLabel, {color: t.textSub}]}>{label}</Text>
+                </View>
+              ))}
             </View>
-            {anchorDay && (
-              <Text style={[styles.anchorText, {color: COLORS.primaryDark}]}>
-                Anchor Day — {(anchorDay.groups || []).join(', ')}
-              </Text>
-            )}
-          </Animated.View>
-        )}
-
-        {/* ── Date selector ─────────────────────────────────────────────────── */}
-        <View style={styles.sectionRow}>
-          <Text style={[styles.sectionLabel, {color: t.textSub}]}>Date</Text>
+          </View>
+          {/* Right: avatar + online dot — tap to open profile modal */}
           <TouchableOpacity
-            style={[styles.datePill, {backgroundColor: t.card, borderColor: COLORS.primary}]}
-            onPress={() => {
-              const parts = date.split('-');
-              setPickerYear(parseInt(parts[0], 10));
-              setPickerMonth(parseInt(parts[1], 10) - 1);
-              setShowDatePicker(true);
-            }}>
-            <Text style={[styles.datePillText, {color: COLORS.primary}]}>{formatDate(date)}</Text>
-            <Text style={[styles.datePillIcon, {color: COLORS.primary}]}>⌄</Text>
+            style={styles.headerAvatarWrap}
+            onPress={() => setShowProfileModal(true)}
+            activeOpacity={0.75}>
+            {employee?.profilePic ? (
+              <Image source={{uri: employee.profilePic}} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatarFallback, {borderColor: COLORS.primaryGlow}]}>
+                <Text style={styles.headerAvatarInitial}>
+                  {employee?.name ? employee.name[0].toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+            <View style={[styles.headerOnlineDot, {borderColor: t.bg}]} />
           </TouchableOpacity>
         </View>
 
-        {/* ── Date picker modal ─────────────────────────────────────────────── */}
-        <Modal visible={showDatePicker} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <Animated.View entering={ZoomIn.duration(250)} style={[styles.modalCard, {backgroundColor: t.card}]}>
-              {/* X close — top left */}
-              <TouchableOpacity
-                style={[styles.pickerCloseX, {backgroundColor: t.chipBg}]}
-                onPress={() => setShowDatePicker(false)}
-                hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                <Text style={[styles.pickerCloseXText, {color: t.textSub}]}>✕</Text>
-              </TouchableOpacity>
-
-              <View style={styles.pickerHeader}>
+        {/* ── Mini week calendar ────────────────────────────────────────────── */}
+        {(() => {
+          // Compute week days for current offset
+          const today = new Date(todayStr);
+          const anchor = new Date(today);
+          anchor.setDate(anchor.getDate() + calWeekOffset * 7);
+          // Sunday of that week
+          const sun = new Date(anchor);
+          sun.setDate(anchor.getDate() - anchor.getDay());
+          const weekDays = Array.from({length: 7}, (_, i) => {
+            const d = new Date(sun);
+            d.setDate(sun.getDate() + i);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return {
+              dateStr: `${d.getFullYear()}-${mm}-${dd}`,
+              dayLabel: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()],
+              dayNum: d.getDate(),
+            };
+          });
+          const monthLabel = anchor.toLocaleString('en-IN', {month: 'long', year: 'numeric'});
+          return (
+            <View style={[styles.miniCal, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
+              {/* Header: prev / month label / next */}
+              <View style={styles.miniCalHeader}>
                 <TouchableOpacity
-                  onPress={() => {
-                    const d = new Date(pickerYear, pickerMonth - 1, 1);
-                    setPickerYear(d.getFullYear());
-                    setPickerMonth(d.getMonth());
-                  }}>
-                  <Text style={[styles.pickerNav, {color: COLORS.primary}]}>‹</Text>
+                  style={[styles.miniCalNavBtn, {backgroundColor: t.chipBg}]}
+                  onPress={() => setCalWeekOffset(o => o - 1)}>
+                  <Text style={[styles.miniCalNavArrow, {color: t.textSub}]}>‹</Text>
                 </TouchableOpacity>
-                <Text style={[styles.pickerTitle, {color: t.text}]}>
-                  {new Date(pickerYear, pickerMonth).toLocaleString('en-IN', {month: 'long', year: 'numeric'})}
-                </Text>
+                <Text style={[styles.miniCalMonth, {color: t.text}]}>{monthLabel}</Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    const d = new Date(pickerYear, pickerMonth + 1, 1);
-                    setPickerYear(d.getFullYear());
-                    setPickerMonth(d.getMonth());
-                  }}>
-                  <Text style={[styles.pickerNav, {color: COLORS.primary}]}>›</Text>
+                  style={[styles.miniCalNavBtn, {backgroundColor: t.chipBg}]}
+                  onPress={() => setCalWeekOffset(o => o + 1)}>
+                  <Text style={[styles.miniCalNavArrow, {color: t.textSub}]}>›</Text>
                 </TouchableOpacity>
               </View>
-
-              <View style={styles.pickerDayHeaders}>
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                  <Text key={d} style={[styles.pickerDayHeader, {color: t.textSub}]}>{d}</Text>
-                ))}
+              {/* Day cells */}
+              <View style={styles.miniCalRow}>
+                {weekDays.map(({dateStr, dayLabel, dayNum}) => {
+                  const isPast = dateStr < todayStr;
+                  const isSelected = dateStr === date;
+                  const isToday = dateStr === todayStr;
+                  return (
+                    <TouchableOpacity
+                      key={dateStr}
+                      style={[
+                        styles.miniCalCell,
+                        isToday && !isSelected && {borderColor: COLORS.primary, borderWidth: 1.5},
+                        isSelected && {backgroundColor: COLORS.primary},
+                        isPast && {opacity: 0.35},
+                      ]}
+                      onPress={() => {
+                        if (isPast) return;
+                        setDate(dateStr);
+                        setSelectedSeatId(null);
+                        setShowCancelConfirm(false);
+                      }}
+                      disabled={isPast}
+                      activeOpacity={0.75}>
+                      <Text style={[
+                        styles.miniCalDayLabel,
+                        {color: isSelected ? 'rgba(255,255,255,0.75)' : t.textSub},
+                      ]}>{dayLabel}</Text>
+                      <Text style={[
+                        styles.miniCalDayNum,
+                        {color: isSelected ? '#fff' : t.text},
+                        isToday && !isSelected && {color: COLORS.primary, fontWeight: '800'},
+                      ]}>{dayNum}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-
-              <View style={styles.pickerGrid}>
-                {(() => {
-                  const firstDay = new Date(pickerYear, pickerMonth, 1).getDay();
-                  const daysInMonth = new Date(pickerYear, pickerMonth + 1, 0).getDate();
-                  const cells = [];
-                  for (let i = 0; i < firstDay; i++) cells.push(null);
-                  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-                  return cells.map((day, idx) => {
-                    if (!day) return <View key={`e-${idx}`} style={styles.pickerCell} />;
-                    const mm = String(pickerMonth + 1).padStart(2, '0');
-                    const dd = String(day).padStart(2, '0');
-                    const cellDate = `${pickerYear}-${mm}-${dd}`;
-                    const isPast = cellDate < todayStr;
-                    const isSelected = cellDate === date;
-                    const isToday = cellDate === todayStr;
-                    return (
-                      <TouchableOpacity
-                        key={cellDate}
-                        style={[
-                          styles.pickerCell,
-                          isSelected && [styles.pickerCellSelected, {backgroundColor: COLORS.primary}],
-                          isToday && !isSelected && [styles.pickerCellToday, {borderColor: COLORS.primary}],
-                          isPast && styles.pickerCellPast,
-                        ]}
-                        onPress={() => {
-                          if (isPast) return;
-                          const parts = cellDate.split('-');
-                          setDate(cellDate);
-                          setPickerYear(parseInt(parts[0], 10));
-                          setPickerMonth(parseInt(parts[1], 10) - 1);
-                          setSelectedSeatId(null);
-                          setShowCancelConfirm(false);
-                          setShowDatePicker(false);
-                        }}
-                        disabled={isPast}>
-                        <Text style={[
-                          styles.pickerCellText,
-                          {color: t.text},
-                          isSelected && styles.pickerCellTextSelected,
-                          isPast && {color: t.textTertiary},
-                        ]}>{day}</Text>
-                      </TouchableOpacity>
-                    );
-                  });
-                })()}
-              </View>
-
-
-            </Animated.View>
-          </View>
-        </Modal>
+            </View>
+          );
+        })()}
 
         {/* ── Floor selector ────────────────────────────────────────────────── */}
         <View style={styles.sectionRow}>
@@ -618,6 +603,58 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* ── My Profile Modal — tap avatar to open, swipe down to close ────────── */}
+      <Modal
+        visible={showProfileModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowProfileModal(false)}>
+        {/* Backdrop — tap to close */}
+        <TouchableOpacity
+          style={styles.profileOverlay}
+          activeOpacity={1}
+          onPress={() => setShowProfileModal(false)}>
+          {/* Sheet — stops tap propagation + handles swipe down */}
+          <View
+            style={[styles.profileSheet, {backgroundColor: t.card, paddingBottom: insets.bottom + 24}]}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={e => e.stopPropagation()}
+            {...profileSheetPan.panHandlers}>
+            {/* Drag handle */}
+            <View style={[styles.profileHandle, {backgroundColor: t.divider}]} />
+
+            {/* Avatar */}
+            <View style={styles.myProfileAvatarWrap}>
+              {employee?.profilePic ? (
+                <Image source={{uri: employee.profilePic}} style={styles.myProfileAvatar} />
+              ) : (
+                <View style={[styles.myProfileAvatar, {backgroundColor: COLORS.primaryMuted, justifyContent: 'center', alignItems: 'center'}]}>
+                  <Text style={[styles.profileAvatarInitial, {fontSize: 32, color: COLORS.primary}]}>
+                    {employee?.name ? employee.name[0].toUpperCase() : '?'}
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.headerOnlineDot, {borderColor: t.card, width: 14, height: 14, borderRadius: 7}]} />
+            </View>
+
+            {/* Name + email */}
+            <Text style={[styles.profileName, {color: t.text, textAlign: 'center', marginTop: 14}]}>
+              {employee?.name || 'Unknown'}
+            </Text>
+            <Text style={[styles.profileEmail, {color: t.textSub, textAlign: 'center', marginTop: 4}]}>
+              {employee?.email || ''}
+            </Text>
+
+            {/* Logout — solid red */}
+            <TouchableOpacity
+              style={styles.myProfileLogoutBtn}
+              onPress={() => { setShowProfileModal(false); logout(); }}
+              activeOpacity={0.82}>
+              <Text style={styles.myProfileLogoutText}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -634,6 +671,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingTop: 4,
   },
+  headerAvatarWrap: {
+    position: 'relative',
+    marginLeft: 12,
+    marginTop: 2,
+  },
+  headerAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+  },
+  headerAvatarFallback: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.primaryMuted,
+    borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerAvatarInitial: {
+    color: COLORS.primary, fontWeight: '800', fontSize: 18,
+  },
+  headerOnlineDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#4caf50', borderWidth: 2,
+  },
   greeting: {fontSize: 13, fontWeight: '500', marginBottom: 2},
   userName: {fontSize: 24, fontWeight: '800', letterSpacing: -0.8},
   dateBadge: {
@@ -645,18 +704,6 @@ const styles = StyleSheet.create({
   },
   dateBadgeText: {fontSize: 12, fontWeight: '700', letterSpacing: 0.2},
 
-  // Admin card
-  adminCard: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  adminCardRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  adminCardLabel: {fontWeight: '700', fontSize: 13},
-  adminCardValue: {fontWeight: '900', fontSize: 22, letterSpacing: -0.5},
-  anchorText: {fontSize: 12, marginTop: 4, fontWeight: '500'},
-
   // Section row
   sectionRow: {
     flexDirection: 'row',
@@ -666,17 +713,38 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase'},
 
-  // Date pill
-  datePill: {
+  // Mini week calendar
+  miniCal: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 16,
+  },
+  miniCalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  datePillText: {fontWeight: '700', fontSize: 13, marginRight: 4},
-  datePillIcon: {fontSize: 18, lineHeight: 20, marginLeft: 2},
+  miniCalNavBtn: {
+    width: 32, height: 32, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  miniCalNavArrow: {fontSize: 20, lineHeight: 22, fontWeight: '600'},
+  miniCalMonth: {fontSize: 14, fontWeight: '700', letterSpacing: -0.2},
+  miniCalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  miniCalCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginHorizontal: 2,
+  },
+  miniCalDayLabel: {fontSize: 10, fontWeight: '600', letterSpacing: 0.2, marginBottom: 5},
+  miniCalDayNum: {fontSize: 15, fontWeight: '700'},
 
   // Floor chips
   floorScroll: {marginBottom: 16},
@@ -689,6 +757,14 @@ const styles = StyleSheet.create({
   },
   floorChipText: {fontSize: 13, fontWeight: '600'},
   floorChipTextActive: {color: '#FFFFFF', fontWeight: '700'},
+
+  // Floor + legend row
+  floorLegendRow: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4},
+  floorSide: {flex: 1, marginRight: 8},
+  legendSide: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 8, gap: 10},
+  legendItem: {flexDirection: 'row', alignItems: 'center', marginRight: 8},
+  legendDot: {width: 8, height: 8, borderRadius: 4, marginRight: 4},
+  legendLabel: {fontSize: 10, fontWeight: '600', letterSpacing: 0.2},
 
   // Restriction
   restrictionPanel: {
@@ -794,50 +870,6 @@ const styles = StyleSheet.create({
   bookBtnDisabled: {opacity: 0.65, shadowOpacity: 0},
   bookBtnText: {color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 0.1},
 
-  // Date picker modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    borderRadius: 20,
-    padding: 20,
-    width: '90%',
-    maxWidth: 360,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 12},
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 20,
-  },
-  pickerCloseX: {
-    position: 'absolute', top: 12, left: 12, zIndex: 10,
-    width: 30, height: 30, borderRadius: 15,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pickerCloseXText: {fontSize: 14, fontWeight: '700', lineHeight: 16},
-  pickerHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 8},
-  pickerNav: {fontSize: 26, paddingHorizontal: 8},
-  pickerTitle: {fontWeight: '800', fontSize: 16, letterSpacing: -0.3},
-  pickerDayHeaders: {flexDirection: 'row', marginBottom: 6},
-  pickerDayHeader: {flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', letterSpacing: 0.3},
-  pickerGrid: {flexDirection: 'row', flexWrap: 'wrap'},
-  pickerCell: {width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, marginVertical: 2},
-  pickerCellSelected: {},
-  pickerCellToday: {borderWidth: 1.5},
-  pickerCellPast: {opacity: 0.3},
-  pickerCellText: {fontSize: 13},
-  pickerCellTextSelected: {color: '#fff', fontWeight: '800'},
-  pickerClose: {
-    marginTop: 16,
-    alignSelf: 'center',
-    borderRadius: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 36,
-  },
-  pickerCloseText: {color: '#fff', fontWeight: '700', fontSize: 15},
 
   // Profile sheet
   profileOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end'},
@@ -864,4 +896,21 @@ const styles = StyleSheet.create({
   profileError: {color: '#ef5350', fontSize: 13, textAlign: 'center', marginVertical: 20},
   profileCloseBtn: {borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4},
   profileCloseBtnText: {color: '#fff', fontWeight: '700', fontSize: 15},
+
+  // My profile modal
+  myProfileAvatarWrap: {alignItems: 'center', marginTop: 8, position: 'relative', alignSelf: 'center'},
+  myProfileAvatar: {width: 80, height: 80, borderRadius: 40},
+  myProfileLogoutBtn: {
+    marginTop: 28,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    backgroundColor: '#ef5350',
+    shadowColor: '#ef5350',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  myProfileLogoutText: {color: '#fff', fontWeight: '700', fontSize: 15},
 });

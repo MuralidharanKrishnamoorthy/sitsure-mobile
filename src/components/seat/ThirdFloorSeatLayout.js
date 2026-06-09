@@ -8,8 +8,8 @@ import {
 import { COLORS } from '../../theme/colors';
 import { IsoWorkstationCell as WorkstationSeatCell } from './IsoWorkstationCell';
 
-const BASE_SEAT_W = 82;
-const BASE_SEAT_H = 72;
+const BASE_SEAT_W = 108;
+const BASE_SEAT_H = 96;
 const BASE_GAP_X = 10;
 const BASE_SECTION_GAP_Y = 52;
 
