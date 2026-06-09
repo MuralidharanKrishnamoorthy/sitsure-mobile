@@ -121,7 +121,7 @@ export default function LoginScreen() {
 
   return (
     <View style={[styles.container, {paddingBottom: insets.bottom}]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDark} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bgLight} />
 
       {/* Radial violet glow */}
       <Animated.View style={[styles.glowOrb, glowStyle]} />
@@ -130,19 +130,6 @@ export default function LoginScreen() {
       <Animated.View style={[styles.card, cardStyle]}>
         {/* Logo block */}
         <View style={styles.logoBlock}>
-          <View style={styles.logoIconWrap}>
-            <Svg width={36} height={36} viewBox="0 0 36 36" fill="none">
-              <Rect width="36" height="36" rx="10" fill={COLORS.primary} />
-              <Path
-                d="M10 26L18 10L26 26"
-                stroke="#fff" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round"
-              />
-              <Path
-                d="M13 21H23"
-                stroke="#fff" strokeWidth={2.2} strokeLinecap="round"
-              />
-            </Svg>
-          </View>
           <Text style={styles.logoText}>SitSure</Text>
           <Text style={styles.logoTagline}>WORKSPACE BOOKING</Text>
         </View>
@@ -174,7 +161,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        <Text style={styles.hint}>@venzotechnologies.com accounts only</Text>
       </Animated.View>
     </View>
   );
@@ -183,7 +169,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bgDark,
+    backgroundColor: COLORS.bgLight,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 28,
@@ -207,12 +193,12 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: 'rgba(22,22,31,0.92)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 24,
     paddingVertical: 36,
     paddingHorizontal: 28,
     borderWidth: 1,
-    borderColor: 'rgba(139,111,255,0.18)',
+    borderColor: COLORS.primaryMuted,
     shadowColor: COLORS.primary,
     shadowOffset: {width: 0, height: 12},
     shadowOpacity: 0.2,
@@ -234,13 +220,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: COLORS.primary,
     letterSpacing: -1.2,
     marginBottom: 4,
   },
   logoTagline: {
     fontSize: 10,
-    color: COLORS.textSecondaryDark,
+    color: COLORS.textSecondaryLight,
     letterSpacing: 3.5,
     fontWeight: '600',
   },
@@ -251,7 +237,7 @@ const styles = StyleSheet.create({
   },
   signInLabel: {
     fontSize: 13,
-    color: COLORS.textSecondaryDark,
+    color: COLORS.textSecondaryLight,
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: '500',

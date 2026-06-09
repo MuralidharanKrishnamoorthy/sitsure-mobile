@@ -412,12 +412,13 @@ export default function HomeScreen() {
         )}
 
         {/* ── Seat map ──────────────────────────────────────────────────────── */}
-        <View style={[styles.seatMapCard, {backgroundColor: t.card, borderColor: t.cardBorder}]}>
-          {loading ? (
-            <View style={styles.seatMapLoader}>
-              <Loader color={COLORS.primary} size={28} />
-            </View>
-          ) : isFloor1Active ? (
+        {loading ? (
+          <View style={styles.seatMapLoader}>
+            <Loader color={COLORS.primary} size={28} />
+          </View>
+        ) : null}
+        <View style={[styles.seatMapCard, {backgroundColor: t.card, borderColor: t.cardBorder}, loading && styles.seatMapCardHidden]}>
+          {isFloor1Active ? (
             <View style={{height: 620}}>
               <FirstFloorSeatLayout
                 seats={floorSeats}
@@ -704,6 +705,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     marginBottom: 12,
+  },
+  seatMapCardHidden: {
+    display: 'none',
   },
   seatMapLoader: {
     minHeight: 300,

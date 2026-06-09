@@ -572,14 +572,14 @@ export default function AppNavigator() {
 
 const styles = StyleSheet.create({
   // ── Splash ─────────────────────────────────────────────────────────────────
-  splash: {flex: 1, backgroundColor: COLORS.bgDark, justifyContent: 'center', alignItems: 'center', gap: 12},
+  splash: {flex: 1, backgroundColor: COLORS.bgLight, justifyContent: 'center', alignItems: 'center', gap: 12},
   splashGlow: {
     position: 'absolute', width: 280, height: 280, borderRadius: 140,
     backgroundColor: COLORS.primary, opacity: 0.15,
     shadowColor: COLORS.primary, shadowOffset: {width: 0, height: 0}, shadowOpacity: 1, shadowRadius: 80,
   },
-  splashText: {color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: -1.5, marginTop: 6},
-  splashSub: {color: COLORS.textSecondaryDark, fontSize: 10, fontWeight: '600', letterSpacing: 3.5},
+  splashText: {color: COLORS.primary, fontSize: 38, fontWeight: '900', letterSpacing: -1.5, marginTop: 6},
+  splashSub: {color: COLORS.textSecondaryLight, fontSize: 10, fontWeight: '600', letterSpacing: 3.5},
   splashLoaderWrap: {marginTop: 36},
 
   // ── Drawer top strip ───────────────────────────────────────────────────────

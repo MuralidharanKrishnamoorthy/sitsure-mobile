@@ -3,7 +3,7 @@ import { View, Animated, StyleSheet } from 'react-native';
 import Spinkit from 'react-native-spinkit';
 import { COLORS } from '../theme/colors';
 
-export default function Loader({ color, size = 48, style }) {
+export default function Loader({ color, size = 64, style }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function Loader({ color, size = 48, style }) {
 
   return (
     <Animated.View style={[styles.wrap, style, { opacity }]}>
-      <Spinkit type="9CubeGrid" color={color || COLORS.primary} size={size} />
+      <Spinkit type="Wave" color={color || COLORS.primary} size={size} />
     </Animated.View>
   );
 }
