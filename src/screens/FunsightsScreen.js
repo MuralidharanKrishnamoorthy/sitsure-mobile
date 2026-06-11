@@ -1,4 +1,5 @@
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useCallback} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {View, Text, StyleSheet, ScrollView, Image, Dimensions} from 'react-native';
 import Animated, {
   FadeInDown, useSharedValue, useAnimatedStyle, withTiming, Easing,
@@ -68,52 +69,55 @@ export default function FunsightsScreen() {
   const [popularDays, setPopularDays] = useState([]);
   const [favSeats, setFavSeats] = useState([]);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const all = await getBookingAggregates();
+  const loadFunsights = useCallback(async () => {
+    setLoading(true);
+    try {
+      const all = await getBookingAggregates();
 
-        const byUser = {};
-        all.forEach(b => {
-          if (!b.user_email) return;
-          byUser[b.user_email] = (byUser[b.user_email] || 0) + 1;
-        });
-        const sortedUsers = Object.entries(byUser).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const byUser = {};
+      all.forEach(b => {
+        if (!b.user_email) return;
+        byUser[b.user_email] = (byUser[b.user_email] || 0) + 1;
+      });
+      const sortedUsers = Object.entries(byUser).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-        const heroData = await Promise.all(
-          sortedUsers.map(async ([email, count]) => {
-            const profile = accessToken ? await getGraphUserProfile(email, accessToken) : null;
-            return {email, count, profile};
-          }),
-        );
-        setHeroes(heroData);
+      const heroData = await Promise.all(
+        sortedUsers.map(async ([email, count]) => {
+          const profile = accessToken ? await getGraphUserProfile(email, accessToken) : null;
+          return {email, count, profile};
+        }),
+      );
+      setHeroes(heroData);
 
-        const byDate = {};
-        all.forEach(b => {
-          if (!b.date) return;
-          byDate[b.date] = (byDate[b.date] || 0) + 1;
-        });
-        const sortedDates = Object.entries(byDate).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        setPopularDays(sortedDates.map(([date, count]) => ({date, count})));
+      const byDate = {};
+      all.forEach(b => {
+        if (!b.date) return;
+        byDate[b.date] = (byDate[b.date] || 0) + 1;
+      });
+      const sortedDates = Object.entries(byDate).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      setPopularDays(sortedDates.map(([date, count]) => ({date, count})));
 
-        const bySeat = {};
-        all.forEach(b => {
-          if (!b.seat?.id) return;
-          const key = b.seat.id;
-          if (!bySeat[key]) bySeat[key] = {seat: b.seat, count: 0};
-          bySeat[key].count += 1;
-        });
-        const sortedSeats = Object.values(bySeat).sort((a, b) => b.count - a.count).slice(0, 5);
-        setFavSeats(sortedSeats);
-      } catch (err) {
-        console.error('Funsights load error:', err);
-      } finally {
-        setLoading(false);
-      }
+      const bySeat = {};
+      all.forEach(b => {
+        if (!b.seat?.id) return;
+        const key = b.seat.id;
+        if (!bySeat[key]) bySeat[key] = {seat: b.seat, count: 0};
+        bySeat[key].count += 1;
+      });
+      const sortedSeats = Object.values(bySeat).sort((a, b) => b.count - a.count).slice(0, 5);
+      setFavSeats(sortedSeats);
+    } catch (err) {
+      console.error('Funsights load error:', err);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [accessToken]);
+
+  useEffect(() => { loadFunsights(); }, [loadFunsights]);
+
+  useFocusEffect(
+    useCallback(() => { loadFunsights(); }, [loadFunsights]),
+  );
 
   const maxHeroCount = heroes[0]?.count || 1;
   const maxSeatCount = favSeats[0]?.count || 1;
@@ -199,7 +203,7 @@ export default function FunsightsScreen() {
                 <Text style={[styles.favSeatLabel, {color: t.text}]}>
                   {seat.floor?.name ? `${seat.floor.name}-${seat.label}` : seat.label}
                 </Text>
-                <Text style={[styles.favSeatCount, {color: t.textTertiary}]}>{count}×</Text>
+                <Text style={[styles.favSeatCount, {color: t.textTertiary}]}>{count} bookings</Text>
               </View>
               <ProgressBar
                 pct={(count / maxSeatCount) * 100}

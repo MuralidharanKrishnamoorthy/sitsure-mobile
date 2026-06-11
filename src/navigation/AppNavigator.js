@@ -1,5 +1,5 @@
 import React, {useContext, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Pressable, Image} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Pressable} from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence,
   withTiming, withSpring, Easing, FadeInDown,
@@ -16,6 +16,7 @@ import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import FunsightsScreen from '../screens/FunsightsScreen';
+import TodayScreen from '../screens/TodayScreen';
 import {COLORS} from '../theme/colors';
 
 const Stack = createStackNavigator();
@@ -104,9 +105,40 @@ function FunsightsIcon({color, size, focused}) {
   );
 }
 
+function TodayIcon({color, size, focused}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {focused ? (
+        <G>
+          <Rect x="3" y="5" width="22" height="20" rx="3.5" fill={color} />
+          <Rect x="3" y="5" width="22" height="8" rx="3.5" fill={color} />
+          <Path d="M9 3V7M19 3V7" stroke="white" strokeWidth={2} strokeLinecap="round" />
+          <Circle cx="9" cy="17" r="1.8" fill="white" />
+          <Circle cx="14" cy="17" r="1.8" fill="white" />
+          <Circle cx="19" cy="17" r="1.8" fill="white" />
+          <Circle cx="9" cy="22" r="1.8" fill="white" />
+          <Circle cx="14" cy="22" r="1.8" fill="white" />
+        </G>
+      ) : (
+        <G>
+          <Rect x="3" y="5" width="22" height="20" rx="3.5" stroke={color} strokeWidth={1.7} />
+          <Path d="M3 11H25" stroke={color} strokeWidth={1.5} />
+          <Path d="M9 3V7M19 3V7" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+          <Circle cx="9" cy="17" r="1.5" fill={color} />
+          <Circle cx="14" cy="17" r="1.5" fill={color} />
+          <Circle cx="19" cy="17" r="1.5" fill={color} />
+          <Circle cx="9" cy="22" r="1.5" fill={color} />
+          <Circle cx="14" cy="22" r="1.5" fill={color} />
+        </G>
+      )}
+    </Svg>
+  );
+}
+
 function TabIcon({name, color, size, focused}) {
   if (name === 'Home') return <HomeIcon color={color} size={size} focused={focused} />;
   if (name === 'History') return <HistoryIcon color={color} size={size} focused={focused} />;
+  if (name === 'Today') return <TodayIcon color={color} size={size} focused={focused} />;
   if (name === 'Funsights') return <FunsightsIcon color={color} size={size} focused={focused} />;
   return null;
 }
@@ -118,6 +150,7 @@ function TabIcon({name, color, size, focused}) {
 const TAB_DEFS = [
   {name: 'Home',      label: 'Home'},
   {name: 'History',   label: 'History'},
+  {name: 'Today',     label: 'Today'},
   {name: 'Funsights', label: 'Funsights'},
 ];
 
@@ -210,6 +243,7 @@ function MainTabs() {
       screenOptions={{headerShown: false}}>
       <Tab.Screen name="Home"      component={HomeScreen} />
       <Tab.Screen name="History"   component={HistoryScreen} />
+      <Tab.Screen name="Today"     component={TodayScreen} />
       <Tab.Screen name="Funsights" component={FunsightsScreen} />
     </Tab.Navigator>
   );
@@ -312,14 +346,12 @@ function AppStack() {
 
 function SplashScreen() {
   const opacity  = useSharedValue(0);
-  const logoScale = useSharedValue(0.88);
   const dotOp1   = useSharedValue(0.3);
   const dotOp2   = useSharedValue(0.3);
   const dotOp3   = useSharedValue(0.3);
 
   useEffect(() => {
-    opacity.value   = withTiming(1, {duration: 500, easing: Easing.out(Easing.cubic)});
-    logoScale.value = withSpring(1, {damping: 14, stiffness: 120});
+    opacity.value = withTiming(1, {duration: 500, easing: Easing.out(Easing.cubic)});
     // Staggered dot pulse loop
     const loop = (sv, delay) => setTimeout(() => {
       sv.value = withRepeat(
@@ -335,18 +367,12 @@ function SplashScreen() {
   }, []);
 
   const fadeStyle  = useAnimatedStyle(() => ({opacity: opacity.value}));
-  const logoStyle  = useAnimatedStyle(() => ({transform: [{scale: logoScale.value}]}));
   const d1Style    = useAnimatedStyle(() => ({opacity: dotOp1.value}));
   const d2Style    = useAnimatedStyle(() => ({opacity: dotOp2.value}));
   const d3Style    = useAnimatedStyle(() => ({opacity: dotOp3.value}));
 
   return (
     <Animated.View style={[styles.splash, fadeStyle]}>
-      <Animated.Image
-        source={require('../../assets/venzo.png')}
-        style={[styles.splashLogo, logoStyle]}
-        resizeMode="contain"
-      />
       <Text style={styles.splashText}>SitSure</Text>
       <Text style={styles.splashSub}>WORKSPACE BOOKING</Text>
       <View style={styles.splashDots}>
@@ -384,7 +410,6 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   // ── Splash ─────────────────────────────────────────────────────────────────
   splash: {flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', gap: 10},
-  splashLogo: {width: 120, height: 120, borderRadius: 24, marginBottom: 8},
   splashText: {color: '#0f172a', fontSize: 32, fontWeight: '900', letterSpacing: -1.2},
   splashSub: {color: '#94a3b8', fontSize: 10, fontWeight: '600', letterSpacing: 3.5},
   splashDots: {flexDirection: 'row', gap: 8, marginTop: 32},

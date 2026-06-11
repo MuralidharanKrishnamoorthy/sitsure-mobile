@@ -1,29 +1,129 @@
 import React, {useState, useEffect, useContext, useCallback, useRef} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, Modal, Image, PanResponder,
+  Alert, Modal, Image, PanResponder, Dimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  FadeInDown,
+  FadeInDown, Easing, runOnJS,
 } from 'react-native-reanimated';
 import {UserContext} from '../context/UserContext';
 import {getGraphUserProfile} from '../services/graphService';
 import {getFloors} from '../services/seatService';
 import {
   getSeatBookings, getUserBookingForDate, bookSeat,
-  cancelSeatBooking, getAnchorDayForDate,
+  getAnchorDayForDate,
 } from '../services/bookingService';
-import {getTodayInKolkata, formatDate, isUpcomingOrToday, isThursdayOrFriday} from '../utils/dateUtils';
+import {getTodayInKolkata, formatDate, isThursdayOrFriday} from '../utils/dateUtils';
 import {computeRestrictions, canUserBook, isFirstFloor, isSecondFloor, isThirdFloor} from '../utils/bookingRestrictions';
 import FloorSeatLayout from '../components/seat/FloorSeatLayout';
 import FirstFloorSeatLayout from '../components/seat/FirstFloorSeatLayout';
 import SecondFloorSeatLayout from '../components/seat/SecondFloorSeatLayout';
 import ThirdFloorSeatLayout from '../components/seat/ThirdFloorSeatLayout';
+import Svg, {Path, Rect, Line} from 'react-native-svg';
 import {COLORS} from '../theme/colors';
 import {useTheme} from '../context/ThemeContext';
 import Loader from '../components/Loader';
+
+const SCREEN_W = Dimensions.get('window').width;
+const TOAST_W  = SCREEN_W - 32;
+
+
+function BookingToast({seat, date, onHide}) {
+  const tx = useSharedValue(SCREEN_W);
+
+  useEffect(() => {
+    // slide in
+    tx.value = withSpring(0, {damping: 18, stiffness: 180, mass: 0.8});
+    // auto-dismiss after 3s
+    const timer = setTimeout(() => {
+      tx.value = withTiming(SCREEN_W, {duration: 320, easing: Easing.in(Easing.cubic)}, finished => {
+        if (finished) runOnJS(onHide)();
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{translateX: tx.value}],
+  }));
+
+  const floorName  = seat?.floor?.name || '';
+  const seatLabel  = seat?.label || '';
+  const seatDisplay = floorName ? `${floorName} · Seat ${seatLabel}` : `Seat ${seatLabel}`;
+  const dateLabel  = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', {
+    weekday: 'short', day: 'numeric', month: 'short',
+  });
+
+  return (
+    <Animated.View style={[toastStyles.card, animStyle]} pointerEvents="none">
+      <View style={toastStyles.accentBar} />
+      <View style={toastStyles.body}>
+        <View style={toastStyles.iconWrap}>
+          <View style={toastStyles.iconDot} />
+        </View>
+        <View style={toastStyles.textBlock}>
+          <Text style={toastStyles.title}>Seat Booked!</Text>
+          <Text style={toastStyles.sub}>{seatDisplay}  ·  {dateLabel}</Text>
+        </View>
+        <View style={toastStyles.checkWrap}>
+          <Text style={toastStyles.check}>✓</Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+const toastStyles = StyleSheet.create({
+  card: {
+    position: 'absolute',
+    right: 16,
+    top: 72,
+    width: TOAST_W,
+    borderRadius: 16,
+    backgroundColor: '#0f172a',
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 999,
+  },
+  accentBar: {
+    width: 4,
+    backgroundColor: COLORS.primary,
+  },
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: `${COLORS.primary}25`,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  iconDot: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: COLORS.primary,
+  },
+  textBlock: {flex: 1, gap: 3},
+  title: {color: '#ffffff', fontSize: 14, fontWeight: '800', letterSpacing: -0.2},
+  sub:   {color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '500'},
+  checkWrap: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: `${COLORS.primary}30`,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  check: {color: COLORS.primary, fontSize: 15, fontWeight: '900', lineHeight: 20},
+});
 
 // Greeting based on time of day
 function getGreeting() {
@@ -54,10 +154,10 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [calWeekOffset, setCalWeekOffset] = useState(0);
   const [bookedProfile, setBookedProfile] = useState({visible: false, loading: false, error: '', data: null, seat: null});
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [toast, setToast] = useState(null); // {seat, date}
   const todayStr = getTodayInKolkata();
 
   const bookBtnScale = useSharedValue(1);
@@ -148,6 +248,15 @@ export default function HomeScreen() {
     return () => { signal.cancelled = true; };
   }, [loadSeatsAndBooking]);
 
+  // Refresh seat data every time this tab is focused (e.g. after cancel on History)
+  useFocusEffect(
+    useCallback(() => {
+      const signal = {cancelled: false};
+      loadSeatsAndBooking(signal);
+      return () => { signal.cancelled = true; };
+    }, [loadSeatsAndBooking]),
+  );
+
   const scrollViewRef = useRef(null);
   const bookingPanelY = useRef(0);
   const mountedRef = useRef(true);
@@ -182,6 +291,7 @@ export default function HomeScreen() {
         floor_id: selectedFloorId,
         status: 'booked',
       });
+      setToast({seat, date});
       setSelectedSeatId(null);
       await loadSeatsAndBooking();
     } catch (err) {
@@ -194,20 +304,6 @@ export default function HomeScreen() {
       }
     } finally {
       bookBtnScale.value = withSpring(1, {damping: 12});
-      setBookingLoading(false);
-    }
-  };
-
-  const handleCancelSeat = async () => {
-    if (!myBookedSeat || bookingLoading) return;
-    setBookingLoading(true);
-    try {
-      await cancelSeatBooking(myBookedSeat.id);
-      setShowCancelConfirm(false);
-      await loadSeatsAndBooking();
-    } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to cancel booking');
-    } finally {
       setBookingLoading(false);
     }
   };
@@ -330,7 +426,6 @@ export default function HomeScreen() {
                       key={dateStr}
                       style={[
                         styles.miniCalCell,
-                        isToday && !isSelected && {borderColor: COLORS.primary, borderWidth: 1.5},
                         isSelected && {backgroundColor: COLORS.primary},
                         isPast && {opacity: 0.35},
                       ]}
@@ -338,7 +433,6 @@ export default function HomeScreen() {
                         if (isPast) return;
                         setDate(dateStr);
                         setSelectedSeatId(null);
-                        setShowCancelConfirm(false);
                       }}
                       disabled={isPast}
                       activeOpacity={0.75}>
@@ -349,8 +443,10 @@ export default function HomeScreen() {
                       <Text style={[
                         styles.miniCalDayNum,
                         {color: isSelected ? '#fff' : t.text},
-                        isToday && !isSelected && {color: COLORS.primary, fontWeight: '800'},
                       ]}>{dayNum}</Text>
+                      {isToday && (
+                        <View style={[styles.miniCalTodayDot, {backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : COLORS.primary}]} />
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -397,12 +493,12 @@ export default function HomeScreen() {
         )}
 
         {/* ── Seat map ──────────────────────────────────────────────────────── */}
-        {loading ? (
-          <View style={styles.seatMapLoader}>
+        {loading && (
+          <View style={{height: 200, alignItems: 'center', justifyContent: 'center'}}>
             <Loader color={COLORS.primary} size={28} />
           </View>
-        ) : null}
-        <View style={[styles.seatMapCard, {backgroundColor: t.card, borderColor: t.cardBorder}, loading && styles.seatMapCardHidden]}>
+        )}
+        <View style={[styles.seatMapCard, {backgroundColor: t.card, borderColor: t.cardBorder}, loading && {opacity: 0, height: 0, overflow: 'hidden'}]}>
           {isFloor1Active ? (
             <View style={{height: 620}}>
               <FirstFloorSeatLayout
@@ -464,33 +560,6 @@ export default function HomeScreen() {
               <Text style={[styles.myBookingText, {color: t.text}]}>
                 {myBookedSeat.seat?.floor?.name}-{myBookedSeat.seat?.label}
               </Text>
-              {isUpcomingOrToday(date) && (
-                showCancelConfirm ? (
-                  <View style={styles.cancelConfirmRow}>
-                    <TouchableOpacity
-                      style={[styles.keepBtn, {backgroundColor: t.chipBg, borderColor: t.chipBorder}]}
-                      onPress={() => setShowCancelConfirm(false)}
-                      disabled={bookingLoading}>
-                      <Text style={[styles.keepBtnText, {color: t.textSub}]}>Keep</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.confirmCancelBtn}
-                      onPress={handleCancelSeat}
-                      disabled={bookingLoading}>
-                      <Text style={styles.confirmCancelText}>
-                        {bookingLoading ? 'Cancelling…' : 'Confirm Cancel'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => setShowCancelConfirm(true)}
-                    disabled={bookingLoading}>
-                    <Text style={styles.cancelBtnText}>Cancel Booking</Text>
-                  </TouchableOpacity>
-                )
-              )}
             </View>
           </Animated.View>
         )}
@@ -513,7 +582,11 @@ export default function HomeScreen() {
               </Text>
               {selectedSeat.has_monitor && (
                 <View style={[styles.monitorBadge, {backgroundColor: COLORS.monitorBadge}]}>
-                  <Text style={styles.monitorText}>🖥 Monitor</Text>
+                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                    <Rect x="2" y="3" width="20" height="14" rx="2" stroke="#fff" strokeWidth={2} />
+                    <Path d="M8 21H16M12 17V21" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
+                  </Svg>
+                  <Text style={styles.monitorText}>Monitor</Text>
                 </View>
               )}
             </View>
@@ -655,6 +728,15 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── Booking toast — slides in from right ──────────────────────────────── */}
+      {toast && (
+        <BookingToast
+          seat={toast.seat}
+          date={toast.date}
+          onHide={() => setToast(null)}
+        />
+      )}
     </View>
   );
 }
@@ -745,6 +827,7 @@ const styles = StyleSheet.create({
   },
   miniCalDayLabel: {fontSize: 10, fontWeight: '600', letterSpacing: 0.2, marginBottom: 5},
   miniCalDayNum: {fontSize: 15, fontWeight: '700'},
+  miniCalTodayDot: {width: 4, height: 4, borderRadius: 2, marginTop: 3},
 
   // Floor chips
   floorScroll: {marginBottom: 16},
@@ -782,9 +865,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 12,
   },
-  seatMapCardHidden: {
-    display: 'none',
-  },
   seatMapLoader: {
     minHeight: 300,
     justifyContent: 'center',
@@ -803,34 +883,6 @@ const styles = StyleSheet.create({
   myBookingBody: {flex: 1, padding: 14},
   myBookingLabel: {fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4},
   myBookingText: {fontSize: 17, fontWeight: '800', letterSpacing: -0.3, marginBottom: 12},
-  cancelConfirmRow: {flexDirection: 'row', gap: 8},
-  keepBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-  },
-  keepBtnText: {fontWeight: '600', fontSize: 13},
-  confirmCancelBtn: {
-    backgroundColor: 'rgba(239,83,80,0.12)',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    flex: 1,
-  },
-  confirmCancelText: {color: '#ef5350', fontWeight: '700', fontSize: 13},
-  cancelBtn: {
-    backgroundColor: 'rgba(239,83,80,0.10)',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(239,83,80,0.22)',
-  },
-  cancelBtnText: {color: '#ef5350', fontWeight: '700', fontSize: 13},
 
   // Selected seat
   selectedPanel: {
@@ -843,7 +895,7 @@ const styles = StyleSheet.create({
   selectedAccent: {width: 4},
   selectedBody: {flex: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10},
   selectedLabel: {fontWeight: '700', fontSize: 15},
-  monitorBadge: {borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3},
+  monitorBadge: {flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start'},
   monitorText: {color: '#fff', fontSize: 11, fontWeight: '600'},
 
   // Error

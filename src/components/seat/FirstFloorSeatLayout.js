@@ -270,47 +270,61 @@ export default function FirstFloorSeatLayout({
 
             <View style={{ height: sectionGap }} />
 
-            {/* ── LOUNGE — offset to align under right bank ── */}
+            {/* ── DESIGNER LOBBY — offset to align under right bank ── */}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              {/* spacer to push lounge under right bank */}
+              {/* spacer to push lobby under right bank */}
               <View style={{ width: (4 * seatW + 3 * gapX) + aisleW + entranceAisleW * 0.3 }} />
-              {/* Column 0 — faces right */}
-              <View style={{ flexDirection: 'column' }}>
-                {loungeCol0.map((seat, idx) => (
-                  <SeatCell
-                    key={seat ? seat.id : `lounge-col0-${idx}`}
-                    seat={seat}
-                    selectedSeatId={selectedSeatId}
-                    myBookedSeatId={myBookedSeatId}
-                    userEmail={userEmail}
-                    onSeatPress={onSeatPress}
-                    onBookedSeatPress={onBookedSeatPress}
-                    seatW={loungeW}
-                    seatH={loungeH}
-                    style={idx > 0 ? { marginTop: gapY } : undefined}
-                  />
-                ))}
-              </View>
 
-              {/* Gap between facing columns */}
-              <View style={{ width: aisleW * 0.6 }} />
+              {/* Designer Lobby zone card */}
+              <View style={[
+                styles.lobbyCard,
+                {
+                  padding: gapX,
+                  borderRadius: 14,
+                  gap: gapX,
+                },
+              ]}>
+                {/* Header row: icon + label */}
+                <View style={styles.lobbyHeader}>
+                  <Text style={styles.lobbyTitle}>Designer Lobby</Text>
+                </View>
 
-              {/* Column 1 — faces left */}
-              <View style={{ flexDirection: 'column' }}>
-                {loungeCol1.map((seat, idx) => (
-                  <SeatCell
-                    key={seat ? seat.id : `lounge-col1-${idx}`}
-                    seat={seat}
-                    selectedSeatId={selectedSeatId}
-                    myBookedSeatId={myBookedSeatId}
-                    userEmail={userEmail}
-                    onSeatPress={onSeatPress}
-                    onBookedSeatPress={onBookedSeatPress}
-                    seatW={loungeW}
-                    seatH={loungeH}
-                    style={idx > 0 ? { marginTop: gapY } : undefined}
-                  />
-                ))}
+                {/* Seat columns side by side */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: aisleW * 0.6 }}>
+                  {/* Column 0 */}
+                  <View style={{ flexDirection: 'column', gap: gapY }}>
+                    {loungeCol0.map((seat, idx) => (
+                      <SeatCell
+                        key={seat ? seat.id : `lounge-col0-${idx}`}
+                        seat={seat}
+                        selectedSeatId={selectedSeatId}
+                        myBookedSeatId={myBookedSeatId}
+                        userEmail={userEmail}
+                        onSeatPress={onSeatPress}
+                        onBookedSeatPress={onBookedSeatPress}
+                        seatW={loungeW}
+                        seatH={loungeH}
+                      />
+                    ))}
+                  </View>
+
+                  {/* Column 1 */}
+                  <View style={{ flexDirection: 'column', gap: gapY }}>
+                    {loungeCol1.map((seat, idx) => (
+                      <SeatCell
+                        key={seat ? seat.id : `lounge-col1-${idx}`}
+                        seat={seat}
+                        selectedSeatId={selectedSeatId}
+                        myBookedSeatId={myBookedSeatId}
+                        userEmail={userEmail}
+                        onSeatPress={onSeatPress}
+                        onBookedSeatPress={onBookedSeatPress}
+                        seatW={loungeW}
+                        seatH={loungeH}
+                      />
+                    ))}
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -334,6 +348,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  lobbyCard: {
+    backgroundColor: 'rgba(108,71,255,0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(108,71,255,0.20)',
+    borderStyle: 'dashed',
+  },
+  lobbyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lobbyTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
 });

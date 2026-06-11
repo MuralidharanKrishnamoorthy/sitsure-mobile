@@ -359,6 +359,7 @@ export default function SecondFloorSeatLayout({
                   seatW={mrSeatW}
                   seatH={mrSeatH}
                   hasAvailableStandard={hasAvailableStandard}
+
                   {...cp}
                 />
 
@@ -372,6 +373,7 @@ export default function SecondFloorSeatLayout({
                   seatW={mrSeatW}
                   seatH={mrSeatH}
                   hasAvailableStandard={hasAvailableStandard}
+
                   {...cp}
                 />
               </View>
